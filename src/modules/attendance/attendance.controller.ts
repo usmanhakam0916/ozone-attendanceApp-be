@@ -565,10 +565,10 @@ export class AttendanceController {
       );
     }
 
-    // Only Admin can directly approve/reject
+    // Only Admin can directly approve/reject, in rejected case it will be set to none
     if (req.user.type === UserType.ADMIN && targetAttendance.updateRequestStatus === UpdateRequestStatus.REQUESTED) {
       if ([UpdateRequestStatus.APPROVED, UpdateRequestStatus.REJECTED].includes(data.status)) {
-        targetAttendance.updateRequestStatus = data.status;
+        targetAttendance.updateRequestStatus = data.status === UpdateRequestStatus.APPROVED ? UpdateRequestStatus.APPROVED : UpdateRequestStatus.NONE;
       }
     } else if (targetAttendance.updateRequestStatus === UpdateRequestStatus.NONE) {
       if (!targetAttendance.checkOutType) {
