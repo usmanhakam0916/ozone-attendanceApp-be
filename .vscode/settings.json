@@ -1,0 +1,29 @@
+{
+  "editor.formatOnSave": true,
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "cSpell.words": [
+    "Zafar",
+    "cnic",
+    "graphy",
+    "johar",
+    "nestjs",
+    "postgres",
+    "typeorm",
+    "uncheckout",
+    "videographer"
+  ]
+}
