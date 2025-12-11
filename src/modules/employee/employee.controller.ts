@@ -119,7 +119,9 @@ export class EmployeeController {
         .leftJoinAndSelect('employee.avatar', 'avatar')
         .skip(skip)
         .take(take)
-        .where('user.type=:userType', { userType: userEntity.UserType.EMPLOYEE });
+        .where('user.type=:userType', {
+          userType: userEntity.UserType.EMPLOYEE,
+        });
       if (!req.user.isActiveDirectory) {
         query.andWhere('user.isActiveDirectory=:isActiveDirectory', {
           isActiveDirectory: false,
@@ -180,7 +182,7 @@ export class EmployeeController {
     const employees = [];
     const rawEmployees = employees_2021_05_17;
 
-    const encryptedPassword = await AppHelpers.hashPassword('12345')
+    const encryptedPassword = await AppHelpers.hashPassword('12345');
     rawEmployees.forEach((item) =>
       users.push({
         type: userEntity.UserType.EMPLOYEE,
@@ -260,7 +262,7 @@ export class EmployeeController {
       .values(mergedLocations)
       .execute();
 
-    const encryptedPassword = await AppHelpers.hashPassword('12345')
+    const encryptedPassword = await AppHelpers.hashPassword('12345');
     rawEmployees.forEach((item) =>
       users.push({
         type: userEntity.UserType.EMPLOYEE,
@@ -409,8 +411,10 @@ export class EmployeeController {
     // }
 
     // return { user: employee, ozoneUser: res?.data || {} };
-    const ozoneUser = employee?.authUser?.initialData ? { data: { data: JSON.parse(employee?.authUser?.initialData) } } : {}
-    await employee?.department
+    const ozoneUser = employee?.authUser?.initialData
+      ? { data: { data: JSON.parse(employee?.authUser?.initialData) } }
+      : {};
+    await employee?.department;
     return { user: employee, ozoneUser };
   }
 
@@ -421,12 +425,13 @@ export class EmployeeController {
   @UsePipes(ValidationPipe)
   public async create(@Body() data: CreateEmployeeDto) {
     try {
-      const existingUser = await this.userRepo.findOne({ where: { username: data.employeeNumber } });
+      const existingUser = await this.userRepo.findOne({
+        where: { username: data.employeeNumber },
+      });
       if (existingUser) {
         return {
-          message:
-            `Employee already exist against this id :${data.employeeNumber}`
-        }
+          message: `Employee already exist against this id :${data.employeeNumber}`,
+        };
       }
 
       const newEmploye = new Employee();
@@ -446,7 +451,9 @@ export class EmployeeController {
       }
 
       if (data.groupId) {
-        const policyGroup = await this.groupPolicyService.findById(data.groupId);
+        const policyGroup = await this.groupPolicyService.findById(
+          data.groupId,
+        );
         newEmploye.group = policyGroup;
       } else if (data.groupId == null) {
         newEmploye.group = null;
@@ -455,17 +462,19 @@ export class EmployeeController {
       let initialData;
       user.type = data.userType;
       user.status = data.status;
-      user.qrCodeCheckInAllowed = data.qrCodeCheckInAllowed
+      user.qrCodeCheckInAllowed = data.qrCodeCheckInAllowed;
       user.username = data.employeeNumber;
       user.multiDevice = data.multiDevice;
-      user.faceCheckInAllowed = data.faceCheckInAllowed
+      user.faceCheckInAllowed = data.faceCheckInAllowed;
       if (data?.locations?.length == 0) {
         newEmploye.locations = [];
       } else if (data?.locations?.length > 0) {
         const locations = await this.locationService.findByIds(data.locations);
         newEmploye.locations = locations;
       }
-      const department: Department = await this.departmentRepo.findOne(data?.departmentId)
+      const department: Department = await this.departmentRepo.findOne(
+        data?.departmentId,
+      );
       initialData = {
         department_Name: department.name,
         Department: department.name,
@@ -475,8 +484,8 @@ export class EmployeeController {
         position_Name: data?.designation,
         Position: data?.designation,
       };
-      initialData = JSON.stringify(initialData)
-      user.initialData = initialData
+      initialData = JSON.stringify(initialData);
+      user.initialData = initialData;
       newEmploye.department = department;
       user = await this.userRepo.save(user);
       newEmploye.authUser = user;
@@ -488,7 +497,6 @@ export class EmployeeController {
       );
     }
   }
-
 
   async getCreateDepartment(empData) {
     try {
@@ -799,7 +807,7 @@ export class EmployeeController {
     let initialData = JSON.parse(user?.initialData);
     if (data.authUser) {
       if (data?.authUser?.password) {
-        user.password = await AppHelpers.hashPassword(data?.authUser?.password)
+        user.password = await AppHelpers.hashPassword(data?.authUser?.password);
       } else {
         Object.keys(data.authUser).forEach((key) => {
           user[`${key}`] = data.authUser[`${key}`];
@@ -817,15 +825,17 @@ export class EmployeeController {
       existingEmployee.locations = locations;
     }
     if (!data?.authUser?.password) {
-      const department: Department = await this.departmentRepo.findOne(data?.departmentId)
+      const department: Department = await this.departmentRepo.findOne(
+        data?.departmentId,
+      );
       initialData.department_Name = department.name;
       initialData.Department = department.name;
       initialData.emP_Name = data?.employeeName;
       initialData.Name = data?.employeeName;
       initialData.position_Name = data?.designation;
       initialData.Position = data?.designation;
-      initialData = JSON.stringify(initialData)
-      user.initialData = initialData
+      initialData = JSON.stringify(initialData);
+      user.initialData = initialData;
       existingEmployee.department = department;
     }
     await this.userRepo.save(user);
@@ -936,10 +946,7 @@ export class EmployeeController {
   public async changePassword(@Body() data: ChangePasswordDto, @Request() req) {
     const user = await this.userService.getByBatchNo(req.user.username);
 
-    if (!await AppHelpers.comparePassword(
-      data.oldPassword,
-      user.password
-    )) {
+    if (!(await AppHelpers.comparePassword(data.oldPassword, user.password))) {
       throw new HttpException(
         { message: `Invalid password.` },
         HttpStatus.UNAUTHORIZED,

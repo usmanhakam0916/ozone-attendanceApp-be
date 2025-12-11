@@ -23,8 +23,8 @@ import {
 } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Attendance } from './attendance.entity';
-import { AttendanceService } from './attendance.service';
+import { Attendance, UpdateRequestStatus } from './attendance.entity';
+import { AttendanceService, setDateTime } from './attendance.service';
 import { UpdateTimeDto } from './dto/patchAttendanceDto';
 import {
   CheckoutDto,
@@ -44,6 +44,8 @@ import { faceCheckOutDto } from './dto/faceCheckOut.dto';
 import { FaceMatchHelpers } from '../../helpers/faceMatch.helpers';
 import { Request } from 'express'
 import moment = require('moment');
+import { AttendenceTimeType, UpdateAttendenceTimeDto } from './dto/updateAttendentTimeDto';
+import { UpdateAttendentRequestDto } from './dto/updateAttendentRequestDto';
 
 (moment as any).createFromInputFallback = function (config: any) {
   // unreliable string magic, or
@@ -549,6 +551,83 @@ export class AttendanceController {
   public syncAttendanceEService(@Body() data: any, @Req() req) {
     return this.attendanceService.syncAttendanceEService(data, req);
   }
+
+  @ApiOperation({ summary: 'create new Attendance Update request status' })
+  @ApiResponse({ type: Attendance, status: 201 })
+  @Patch('/update/attendence/request/status')
+  @UsePipes(ValidationPipe)
+  public async UpdateAttendenceRequestStatus(@Body() data: UpdateAttendentRequestDto, @Req() req) {
+    const targetAttendance = await this.attendanceRepo.findOne({ id: data.attendanceId });
+    if (!targetAttendance) {
+      throw new HttpException(
+        `Attendance does not exist against this id :${data.attendanceId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Only Admin can directly approve/reject
+    if (req.user.type === UserType.ADMIN && targetAttendance.updateRequestStatus === UpdateRequestStatus.REQUESTED) {
+      if ([UpdateRequestStatus.APPROVED, UpdateRequestStatus.REJECTED].includes(data.status)) {
+        targetAttendance.updateRequestStatus = data.status;
+      }
+    } else if (targetAttendance.updateRequestStatus === UpdateRequestStatus.NONE) {
+      if (!targetAttendance.checkOutType) {
+        throw new HttpException(
+          `Checkout is required for attendence update request`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      // Employees can only request update
+      targetAttendance.updateRequestStatus = UpdateRequestStatus.REQUESTED;
+    } else {
+      throw new HttpException(
+        `Invalida Attendance Request`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
+    return updatedAttendance;
+  }
+
+  @ApiOperation({ summary: 'udpate Attendance request check-in or checkout-time' })
+  @ApiResponse({ type: Attendance, status: 201 })
+  @Patch('/update/attendence/time')
+  @UsePipes(ValidationPipe)
+  public async UpdateAttendenceTime(@Body() data: UpdateAttendenceTimeDto, @Req() req) {
+    if (req.user.type !== UserType.EMPLOYEE) {
+      throw new HttpException(
+        'Only employees can update their attendance time',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const targetAttendance = await this.attendanceRepo.findOne({ id: data.attendanceId });
+    if (!targetAttendance) {
+      throw new HttpException(
+        `Attendance does not exist against this id :${data.attendanceId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    else if (targetAttendance.updateRequestStatus !== UpdateRequestStatus.APPROVED) {
+      throw new HttpException(
+        `Attendance update request is not approved`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const params = { time: [data.hour, data.minute] };
+
+    if (data.attendenceTimeType === AttendenceTimeType.CHECKIN) {
+      targetAttendance.checkInTime = setDateTime(targetAttendance.checkInTime, params);
+    } else {
+      targetAttendance.checkoutTime = setDateTime(targetAttendance.checkoutTime, params);
+    }
+
+    targetAttendance.updateRequestStatus = UpdateRequestStatus.NONE;
+
+    const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
+    return updatedAttendance;
+  }
 }
 
 function getTodaysAttendances(employee, date = null) {
@@ -639,23 +718,61 @@ function handleAllowedCheckins(employee, todaysAttendances, data) {
   }
 }
 
-async function generate_csv(data) {
+function formatHoursToHMS(decimalHours: number): string {
+  const totalSeconds = Math.round(decimalHours * 3600); // convert hours to seconds
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  // Pad 0 if needed
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+async function generate_csv(data: any) {
+  const currentTime = new Date();
+  const beforeMidnight = currentTime.getHours() === 0 && currentTime.getMinutes() === 0;
+  const EXPECTED_HOURS = 8;
+
+  let underTime = '';
+  let overTime = '';
+
   const items = [];
   data.forEach((item) => {
     const initialData = item.employee
       ? JSON.parse(item?.employee?.authUser?.initialData)
       : {};
+
+    if ((item.checkInTime && beforeMidnight) || (item.checkInTime && item.checkoutTime)) {
+      const checkIn = new Date(item.checkInTime);
+      const checkOut = new Date(item.checkoutTime);
+
+      const workedHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60); // hours
+
+      if (workedHours < EXPECTED_HOURS) {
+        overTime = '';
+        underTime = formatHoursToHMS(EXPECTED_HOURS - workedHours);
+      } else {
+        overTime = formatHoursToHMS(workedHours - EXPECTED_HOURS);
+        underTime = '';
+      }
+    } else {
+      underTime = '';
+      overTime = '';
+    }
+
     items.push({
       'Attendance Id': item.id,
       'Employee No': initialData ? initialData['Employee No'] : '',
       'Employee Name': initialData['Name'] || '',
       Department: initialData['Department'] || '',
-      'Check-in Time': item.checkInTime,
-      'CheckOut Time': item.checkoutTime,
-      'Check-in Location': item.location.name,
-      'CheckOut Location': item.checkoutLocation
-        ? item.checkoutLocation.name
-        : item.location.name,
+      'Check-in Time': item.checkInTime ?? 'No Check-in',
+      'CheckOut Time': item.checkInTime ? (item.checkoutTime ? item.checkoutTime : 'No Checkout') : 'No Checkout',
+      'Check-in Location': item.checkInTime ? item.location.name : '-',
+      'CheckOut Location': item.checkInTime ? (item.checkoutTime ? item.checkoutLocation.name : '-') : '-',
+      'Under Time': underTime,
+      'Over Time': overTime,
     });
   });
   const loopIteration = Math.ceil(items.length / 50000);

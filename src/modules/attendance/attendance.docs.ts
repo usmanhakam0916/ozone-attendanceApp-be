@@ -94,5 +94,30 @@ const docs = {
   checkOutDeviceId: {
     required: true,
   },
+
+  updateRequestStatus: {
+    required: false,
+  },
+
+  attendenceTimeType: {
+    required: true
+  },
+
+  attendenceTimeHour: {
+    required: true
+  },
+
+  attendenceTimeMinute: {
+    required: true
+  },
+
+  updateAttendenceTimeDtoAttendanceId: {
+    required: true
+  },
+
+  updateAttendenceTimeDtoStatus: {
+    required: true
+  },
+
 };
 export default docs;

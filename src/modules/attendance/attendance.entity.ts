@@ -19,6 +19,14 @@ import locationDocs from '../location/location.docs';
 import { Location } from '../location/location.entity';
 import { User } from '../user/user.entity';
 
+
+export enum UpdateRequestStatus {
+  NONE = '',
+  REQUESTED = 'REQUESTED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 @Entity()
 export class Attendance {
   @PrimaryGeneratedColumn()
@@ -104,6 +112,12 @@ export class Attendance {
 
   @Column({ default: null })
   syncedAt: Date;
+
+  @ApiProperty(docs.updateRequestStatus)
+  @IsString()
+  @IsNotEmpty()
+  @Column({ type: 'enum', enum: UpdateRequestStatus, default: UpdateRequestStatus.NONE })
+  updateRequestStatus: UpdateRequestStatus;
 
   @ManyToOne(() => Employee, (employee) => employee.attendances)
   public employee: Employee;

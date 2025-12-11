@@ -105,11 +105,11 @@ export class AttendanceService {
       const checkin = compareCheckIn(employee.group.checkinTime);
       const checkout = compareCheckOut(employee.group.checkoutTime);
       if (checkin.response) {
-        checkInTime = setDateTime(checkin);
+        checkInTime = setDateTime(checkInTime, checkin);
       }
 
       if (checkout.response) {
-        checkoutTime = setDateTime(checkout);
+        checkoutTime = setDateTime(checkoutTime, checkout);
       }
     }
     return { checkInTime, checkoutTime };
@@ -437,10 +437,10 @@ function compareCheckIn(param) {
   return { response, time };
 }
 
-function setDateTime(params) {
-  let newDateTime = new Date(getCurrentDateTime());
-  newDateTime = new Date(newDateTime.setHours(params.time[0]));
-  newDateTime = new Date(newDateTime.setMinutes(params.time[1]));
-  newDateTime = new Date(newDateTime.setSeconds(0));
-  return moment(newDateTime).format('YYYY-MM-DD HH:mm:ss');
+export function setDateTime(targetTime, params) {
+  const dateObj = typeof targetTime === 'string' ? new Date(targetTime) : targetTime;
+  dateObj.setHours(params.time[0]);
+  dateObj.setMinutes(params.time[1]);
+  dateObj.setSeconds(0);
+  return moment(dateObj).format('YYYY-MM-DD HH:mm:ss');
 }
