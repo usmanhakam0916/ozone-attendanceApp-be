@@ -4,6 +4,7 @@
 
 /public
 .env
+.env.sample
 
 # Logs
 logs
