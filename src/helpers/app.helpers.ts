@@ -1,4 +1,4 @@
-import * as moment from 'moment';
+import moment = require('moment');
 const ZERO_DATE = '0001-01-01T09:00:00.000Z';
 import path from 'path';
 import Jimp from 'jimp';

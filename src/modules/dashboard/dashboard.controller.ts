@@ -11,7 +11,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Attendance } from '../attendance/attendance.entity';
 import { Employee } from '../employee/employee.entity';
-import * as moment from 'moment';
+import moment = require('moment');
 
 @ApiBearerAuth()
 @Controller('dashboard')

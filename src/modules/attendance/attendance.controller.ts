@@ -34,7 +34,7 @@ import {
 } from './dto/createAttendanceDto';
 import { FileService } from '../file/file.service';
 import { EmployeeService } from '../employee/employee.service';
-import ObjectsToCsv from 'objects-to-csv';
+const ObjectsToCsv = require('objects-to-csv');
 import { LocationService } from '../location/location.service';
 import { AttendanceType } from '../employee/employee.entity';
 import { UserType } from '../user/user.entity';
@@ -43,7 +43,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { faceCheckOutDto } from './dto/faceCheckOut.dto';
 import { FaceMatchHelpers } from '../../helpers/faceMatch.helpers';
 import { Request } from 'express'
-import * as moment from 'moment';
+import moment = require('moment');
 
 (moment as any).createFromInputFallback = function (config: any) {
   // unreliable string magic, or
