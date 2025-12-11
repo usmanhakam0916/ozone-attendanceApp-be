@@ -178,30 +178,44 @@ export class AttendanceController {
     }
     const { badgeNo, departmentId } = req.query;
     const qb = getRepository(Attendance)
-      .createQueryBuilder('Attendance')
-      .where('Attendance.isArchived = false')
-      .leftJoinAndSelect('Attendance.employee', 'employee')
+      .createQueryBuilder('attendance')
+      .where('attendance.isArchived = false')
+      .leftJoinAndSelect('attendance.employee', 'employee')
       .leftJoinAndSelect('employee.authUser', 'authUser')
-      .leftJoinAndSelect('Attendance.location', 'location')
-      .leftJoinAndSelect('Attendance.checkoutLocation', 'checkoutLocation');
+      .leftJoinAndSelect('attendance.location', 'location')
+      .leftJoinAndSelect('attendance.checkoutLocation', 'checkoutLocation');
+
     if (!req.user.isActiveDirectory) {
-      qb.andWhere('authUser.isActiveDirectory=:isActiveDirectory', {
+      qb.andWhere('authUser.isActiveDirectory = :isActiveDirectory', {
         isActiveDirectory: false,
       });
     }
+
     if (badgeNo) {
-      qb.andWhere('authUser.username=:username', { username: badgeNo });
+      qb.andWhere('authUser.username = :username', { username: badgeNo });
     }
+
     if (departmentId) {
-      qb.andWhere('employee."departmentId"=:departmentId', {
+      qb.andWhere('employee.departmentId = :departmentId', {
         departmentId,
       });
     }
+
+    // CASE ordering: REQUESTED on top
+    // Fix: define CASE WHEN as an alias first
+    qb.addSelect(
+      `CASE WHEN attendance.updateRequestStatus = 'REQUESTED' THEN 0 ELSE 1 END`,
+      'request_status_order',
+    );
+
     const [result, total] = await qb
-      .orderBy('Attendance.id', 'DESC')
+      .orderBy('request_status_order', 'ASC') // order by the alias
+      .addOrderBy('attendance.checkoutTime', 'DESC')
       .skip(skip)
       .take(take)
       .getManyAndCount();
+
+
     return { result, total };
   }
 
