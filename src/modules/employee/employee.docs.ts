@@ -52,8 +52,17 @@ const docs = {
     description: 'This is a password',
   },
   macAddress: { required: true, example: 'abcdes' },
+
   isMac: { required: true, example: true },
+
   groupId: { required: false, example: 1 },
+
   multiDevice: { required: false, example: false || true },
+
+  userName: {
+    required: true,
+    example: 'admin',
+    description: 'Unique username',
+  }
 };
 export default docs;

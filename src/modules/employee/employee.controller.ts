@@ -28,6 +28,7 @@ import { AttendanceType, Employee } from './employee.entity';
 import { EmployeeService } from './employee.service';
 import { PatchEmployeeDto } from './dto/patchEmployeeDto';
 import { CreateEmployeeDto } from './dto/createEmployeeDto';
+import { SignupEmployeeDto } from './dto/signupEmployeeDto';
 import { FileService } from '../file/file.service';
 import EmailService from '../email/email.service';
 import { OtpVerifyDto } from './dto/otpVerifyDto';
@@ -416,6 +417,87 @@ export class EmployeeController {
       : {};
     await employee?.department;
     return { user: employee, ozoneUser };
+  }
+
+  @NoAuth()
+  @ApiOperation({ summary: 'Employee Signup' })
+  @ApiResponse({ type: Employee, status: 201 })
+  @Post('signup')
+  @UsePipes(ValidationPipe)
+  public async signup(@Body() data: SignupEmployeeDto) {
+    try {
+      const existingUser = await this.userRepo.findOne({
+        where: { username: data.userName },
+      });
+      if (existingUser) {
+        return {
+          message: `Employee already exist against this user name :${data.userName}`,
+        };
+      }
+
+      const newEmploye = new Employee();
+
+      newEmploye.attendanceRadius = 100;
+
+      newEmploye.attendanceType = AttendanceType.MULTIPLE;
+
+      if (data.macAddress) {
+        newEmploye.macAddress = data.macAddress;
+      }
+
+      if (data.isMac) {
+        newEmploye.isMac = data.isMac;
+      }
+
+      if (data.groupId) {
+        const policyGroup = await this.groupPolicyService.findById(
+          data.groupId,
+        );
+        newEmploye.group = policyGroup;
+      } else if (data.groupId == null) {
+        newEmploye.group = null;
+      }
+
+      let user = new userEntity.User();
+      let initialData;
+      user.type = userEntity.UserType.EMPLOYEE;
+      user.status = userEntity.UserStatus.ACTIVE;
+      user.qrCodeCheckInAllowed = true;
+      user.username = data.userName;
+      user.multiDevice = false;
+      user.faceCheckInAllowed = true;
+      user.password = await AppHelpers.hashPassword(data.password);
+
+      if (data?.locations?.length == 0) {
+        newEmploye.locations = [];
+      } else if (data?.locations?.length > 0) {
+        const locations = await this.locationService.findByIds(data.locations);
+        newEmploye.locations = locations;
+      }
+      const department: Department = await this.departmentRepo.findOne(
+        data?.departmentId,
+      );
+      initialData = {
+        department_Name: department?.name || '',
+        Department: department?.name || '',
+        emP_Name: data?.employeeName,
+        Name: data?.employeeName,
+        emp_Status: user.status.charAt(0).toUpperCase(),
+        position_Name: '',
+        Position: '',
+      };
+      initialData = JSON.stringify(initialData);
+      user.initialData = initialData;
+      newEmploye.department = department;
+      user = await this.userRepo.save(user);
+      newEmploye.authUser = user;
+      return this.employeeRepo.save(newEmploye);
+    } catch (error) {
+      throw new HttpException(
+        { message: error.message },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   @NoAuth()

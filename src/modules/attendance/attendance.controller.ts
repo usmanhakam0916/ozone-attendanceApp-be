@@ -201,10 +201,10 @@ export class AttendanceController {
       });
     }
 
-    // CASE ordering: REQUESTED on top
+    // CASE ordering: CHECKIN_REQUESTED and CHECKOUT_REQUESTED on top
     // Fix: define CASE WHEN as an alias first
     qb.addSelect(
-      `CASE WHEN attendance.updateRequestStatus = 'REQUESTED' THEN 0 ELSE 1 END`,
+      `CASE WHEN attendance.updateRequestStatus in ('CHECKIN_REQUESTED', 'CHECKOUT_REQUESTED') THEN 0 ELSE 1 END`,
       'request_status_order',
     );
 
@@ -580,19 +580,26 @@ export class AttendanceController {
     }
 
     // Only Admin can directly approve/reject, in rejected case it will be set to none
-    if (req.user.type === UserType.ADMIN && targetAttendance.updateRequestStatus === UpdateRequestStatus.REQUESTED) {
-      if ([UpdateRequestStatus.APPROVED, UpdateRequestStatus.REJECTED].includes(data.status)) {
-        targetAttendance.updateRequestStatus = data.status === UpdateRequestStatus.APPROVED ? UpdateRequestStatus.APPROVED : UpdateRequestStatus.NONE;
+    if (req.user.type === UserType.ADMIN &&
+      [UpdateRequestStatus.CHECKIN_REQUESTED, UpdateRequestStatus.CHECKOUT_REQUESTED].includes(targetAttendance.updateRequestStatus) &&
+      [UpdateRequestStatus.CHECKIN_APPROVED, UpdateRequestStatus.CHECKOUT_APPROVED, UpdateRequestStatus.REJECTED].includes(data.status)) {
+      if (UpdateRequestStatus.CHECKIN_APPROVED === data.status) {
+        targetAttendance.updateRequestStatus = UpdateRequestStatus.CHECKIN_APPROVED;
+      } else if (UpdateRequestStatus.CHECKOUT_APPROVED === data.status) {
+        targetAttendance.updateRequestStatus = UpdateRequestStatus.CHECKOUT_APPROVED;
+      } else {
+        //(UpdateRequestStatus.REJECTED ===data.status)
+        targetAttendance.updateRequestStatus = UpdateRequestStatus.NONE;
       }
     } else if (targetAttendance.updateRequestStatus === UpdateRequestStatus.NONE) {
-      if (!targetAttendance.checkOutType) {
+      if (!targetAttendance.checkoutTime) {
         throw new HttpException(
           `Checkout is required for attendence update request`,
           HttpStatus.NOT_FOUND,
         );
       }
       // Employees can only request update
-      targetAttendance.updateRequestStatus = UpdateRequestStatus.REQUESTED;
+      targetAttendance.updateRequestStatus = data.status;
     } else {
       throw new HttpException(
         `Invalida Attendance Request`,
@@ -622,7 +629,7 @@ export class AttendanceController {
         HttpStatus.NOT_FOUND,
       );
     }
-    else if (targetAttendance.updateRequestStatus !== UpdateRequestStatus.APPROVED) {
+    else if (![UpdateRequestStatus.CHECKOUT_APPROVED, UpdateRequestStatus.CHECKIN_APPROVED].includes(targetAttendance.updateRequestStatus)) {
       throw new HttpException(
         `Attendance update request is not approved`,
         HttpStatus.BAD_REQUEST,
@@ -641,6 +648,53 @@ export class AttendanceController {
 
     const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
     return updatedAttendance;
+  }
+  @ApiOperation({ summary: 'Simple Check-in' })
+  @ApiResponse({ type: Attendance, status: 201 })
+  @Post('checkin')
+  public async checkin(@Req() req: any) {
+    const employee = await this.employeeService.findByAuthUserId(req.user.id);
+    if (!employee) {
+      throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+    }
+
+    const todaysAttendances = getTodaysAttendances(employee);
+    // Sort by checkInTime descending to get the latest
+    todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
+    const latestAttendance = todaysAttendances[0];
+
+
+    const location = employee.locations && employee.locations.length > 0 ? employee.locations[0] : null;
+
+    const data = {
+      employeeId: employee.id,
+      locationId: location ? location.id : 0, // Default to 0 if no location
+      checkInTime: AppHelpers.getCurrentDateTime(),
+      // other defaults
+    };
+
+    return this.attendanceService.create(data as any);
+  }
+
+  @ApiOperation({ summary: 'Simple Check-out' })
+  @ApiResponse({ type: Attendance, status: 200 })
+  @Patch('checkout')
+  public async simpleCheckout(@Req() req: any) {
+    const employee = await this.employeeService.findByAuthUserId(req.user.id);
+    if (!employee) {
+      throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+    }
+
+    const todaysAttendances = getTodaysAttendances(employee);
+    // Find the latest open attendance (no checkout time)
+    const openAttendance = todaysAttendances.find(a => !a.checkoutTime);
+
+    if (!openAttendance) {
+      throw new HttpException('No active check-in found to check out', HttpStatus.BAD_REQUEST);
+    }
+
+    openAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
+    return this.attendanceRepo.save(openAttendance);
   }
 }
 
