@@ -5,6 +5,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsEmail,
 } from 'class-validator';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { GroupPolicy } from '../groupPolicy/group_policies.entity';
@@ -54,6 +55,12 @@ export const userStatusHash = {
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @ApiProperty(docs.email)
+  @Column({ unique: true, nullable: false })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 
   @ApiProperty(docs.UserType)
   @Column('enum', { enum: UserType })

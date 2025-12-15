@@ -1,11 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
-import { CreateEmployeeDto } from './createEmployeeDto';
-import { Exclude } from 'class-transformer';
+import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import docs from '../employee.docs';
 
 export class SignupEmployeeDto {
-    @ApiProperty(docs.attendanceType)
+    @ApiProperty(docs.email)
+    @IsEmail()
+    @IsNotEmpty()
+    email: string;
+
+    @ApiProperty(docs.employeeName)
     @IsOptional()
     @IsString()
     employeeName?: string;

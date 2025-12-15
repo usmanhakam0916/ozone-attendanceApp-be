@@ -40,7 +40,7 @@ class AppHelpers {
     return bcrypt.hashSync(rawPassword, SALT);
   }
 
-  static async comparePassword(rawPassword: string, hash: string) {
+  static comparePassword(rawPassword: string, hash: string) {
     return bcrypt.compareSync(rawPassword, hash);
   }
 }

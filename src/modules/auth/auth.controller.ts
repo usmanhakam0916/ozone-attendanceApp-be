@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Patch,
   Post,
+  Query,
   Req,
   Request,
   UseGuards,
@@ -23,7 +24,7 @@ import { AdminService } from '../admin/admin.service';
 import { EmployeeService } from '../employee/employee.service';
 import * as dotenv from 'dotenv';
 import { UserService } from '../user/user.service';
-import { User, UserType, validUserStatus } from '../user/user.entity';
+import { User, UserStatus, UserType, validUserStatus } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/loginDto';
 import { LocalAuthGuard } from './local-auth.guard';
@@ -31,6 +32,7 @@ import { NoAuth } from './no-auth.guard';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppHelpers } from 'src/helpers/app.helpers';
+import { MeQueryDto } from './dto/meDto';
 
 dotenv.config();
 
@@ -53,7 +55,7 @@ export class AuthController {
   @UsePipes(ValidationPipe)
   @Post('auth/login')
   async login(@Body() data: LoginDto) {
-    const user = await this.userService.getByBatchNo(data.username);
+    const user = await this.userService.getByEmail(data.email);
     await this.authService.checkVersion(data);
     if (user) {
       // if  device id is null get the device id from params and udpate the record
@@ -181,7 +183,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'get id of user' })
   @Get('me/me/me')
-  async me(@Req() req) {
+  async me(@Req() req, @Query() query: MeQueryDto) {
     let me = null;
     if (
       req.user &&
@@ -192,13 +194,43 @@ export class AuthController {
     ) {
       me = await this.adminService.findByAuthUserId(req.user.id);
     } else if (req.user && req.user.type === 'employee') {
+      if (!(query.month && query.year)) {
+        throw new HttpException(
+          'Month and year query parameters are required.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const currentYear = new Date().getFullYear(); // getMonth() returns 0-11
+      if (query.year < 1990 && query.year > currentYear) {
+        throw new HttpException(`Year cannot be greater than ${currentYear} and less than 1990`, HttpStatus.BAD_REQUEST);
+      }
+
+      const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
+      if (query.month < 1 && query.month > 12) {
+        throw new HttpException('Month must be between 1 and 12', HttpStatus.BAD_REQUEST);
+      } else if (query.month > currentMonth) {
+        throw new HttpException('Month cannot be of future', HttpStatus.BAD_REQUEST);
+      }
+
       me = await this.employeeService.findByAuthUserId(req.user.id);
-      const sort = me.attendances.sort((a, b) => a.id - b.id);
+      const now = new Date();
+      const sort = me.attendances.filter(x => x.checkInTime) // remove null checkIns
+        .filter(x => {
+          const checkInDate = new Date(x.checkInTime);
+          const monthTrue = checkInDate.getMonth() + 1 === Number(query.month);
+          const yearTrue = checkInDate.getFullYear() === Number(query.year);
+          return monthTrue && yearTrue;
+        }).sort((a, b) => a.id - b.id);
       const last_attendnace = sort[sort.length - 1];
       me['isNightShiftLogin'] = last_attendnace
         ? last_attendnace.isNightShiftLogin
         : false;
-      me.attendances.sort(AppHelpers.getDateTimeSorter('checkInTime'));
+      me.attendances = sort.sort((a, b) => {
+        const dateA = new Date(a.checkInTime).getTime();
+        const dateB = new Date(b.checkInTime).getTime();
+        return dateB - dateA; // descending: latest first
+      });
+
       me['IS_VPN_DETECTION'] = process.env.IS_VPN_DETECTION;
     }
     return me;

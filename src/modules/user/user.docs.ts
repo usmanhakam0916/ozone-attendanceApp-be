@@ -1,4 +1,9 @@
 const docs = {
+  email: {
+    required: true,
+    example: 'admin@admin.com',
+    description: 'Employee email',
+  },
   UserType: {
     required: true,
     example: 'admin',

@@ -35,8 +35,8 @@ export class UserService {
     return this.userRepo.save(data);
   }
 
-  async getByBatchNo(batchNo): Promise<User> {
-    return this.userRepo.findOne({ username: batchNo.toString() });
+  async getByEmail(email): Promise<User> {
+    return this.userRepo.findOne({ where: { email: email } });
   }
 
   async createHouseKeeping(data): Promise<User> {

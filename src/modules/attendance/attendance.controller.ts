@@ -651,8 +651,8 @@ export class AttendanceController {
   }
   @ApiOperation({ summary: 'Simple Check-in' })
   @ApiResponse({ type: Attendance, status: 201 })
-  @Post('checkin')
-  public async checkin(@Req() req: any) {
+  @Post('checkin/:deviceId')
+  public async checkin(@Req() req: any, @Param('deviceId') deviceId: string) {
     const employee = await this.employeeService.findByAuthUserId(req.user.id);
     if (!employee) {
       throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
@@ -670,6 +670,7 @@ export class AttendanceController {
       employeeId: employee.id,
       locationId: location ? location.id : 0, // Default to 0 if no location
       checkInTime: AppHelpers.getCurrentDateTime(),
+      deviceId: deviceId,
       // other defaults
     };
 
@@ -678,8 +679,8 @@ export class AttendanceController {
 
   @ApiOperation({ summary: 'Simple Check-out' })
   @ApiResponse({ type: Attendance, status: 200 })
-  @Patch('checkout')
-  public async simpleCheckout(@Req() req: any) {
+  @Patch('checkout/:deviceId')
+  public async simpleCheckout(@Req() req: any, @Param('deviceId') deviceId: string) {
     const employee = await this.employeeService.findByAuthUserId(req.user.id);
     if (!employee) {
       throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
@@ -692,8 +693,13 @@ export class AttendanceController {
     if (!openAttendance) {
       throw new HttpException('No active check-in found to check out', HttpStatus.BAD_REQUEST);
     }
+    if (openAttendance.checkinDeviceId !== deviceId) {
+      throw new HttpException('Device id does not match', HttpStatus.BAD_REQUEST);
+    }
 
     openAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
+    openAttendance.checkinDeviceId = deviceId;
+
     return this.attendanceRepo.save(openAttendance);
   }
 }

@@ -426,12 +426,22 @@ export class EmployeeController {
   @UsePipes(ValidationPipe)
   public async signup(@Body() data: SignupEmployeeDto) {
     try {
-      const existingUser = await this.userRepo.findOne({
+      let existingUser = await this.userRepo.findOne({
         where: { username: data.userName },
       });
       if (existingUser) {
         return {
           message: `Employee already exist against this user name :${data.userName}`,
+        };
+      }
+
+
+      existingUser = await this.userRepo.findOne({
+        where: { email: data.email },
+      });
+      if (existingUser) {
+        return {
+          message: `Employee already exist against this email :${data.email}`,
         };
       }
 
@@ -459,9 +469,9 @@ export class EmployeeController {
       }
 
       let user = new userEntity.User();
-      let initialData;
+      user.email = data.email;
       user.type = userEntity.UserType.EMPLOYEE;
-      user.status = userEntity.UserStatus.ACTIVE;
+      user.status = userEntity.UserStatus.HOLD;
       user.qrCodeCheckInAllowed = true;
       user.username = data.userName;
       user.multiDevice = false;
@@ -474,9 +484,12 @@ export class EmployeeController {
         const locations = await this.locationService.findByIds(data.locations);
         newEmploye.locations = locations;
       }
+
       const department: Department = await this.departmentRepo.findOne(
         data?.departmentId,
       );
+
+      let initialData;
       initialData = {
         department_Name: department?.name || '',
         Department: department?.name || '',
@@ -491,7 +504,14 @@ export class EmployeeController {
       newEmploye.department = department;
       user = await this.userRepo.save(user);
       newEmploye.authUser = user;
-      return this.employeeRepo.save(newEmploye);
+      const verificationOtp = Math.floor(1000 + Math.random() * 9000);
+
+      const finalResult = await this.employeeRepo.save(newEmploye);
+
+
+      this.resendOtp(finalResult.id);
+
+      return finalResult;
     } catch (error) {
       throw new HttpException(
         { message: error.message },
@@ -635,61 +655,51 @@ export class EmployeeController {
     return this.employeeRepo.save(employee);
   }
 
-  // @NoAuth()
-  // @ApiOperation({ summary: 'Resend OTP' })
-  // @ApiResponse({ type: Employee, status: 201 })
-  // @Post('otp/resend/:id')
-  // @UsePipes(ValidationPipe)
-  // public async resendOtp(
-  //   @Param(
-  //     'id',
-  //     new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
-  //   )
-  //   id: number,
-  // ) {
-  //   const employee = await this.employeeService.findById(id);
-  //   if (!employee) {
-  //     throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
-  //   }
-  //   const res = await this.http
-  //     .get(
-  //       `${OZONE_BACKEND_BASE_URL}Accounts/Users/GetEmployeeDetails/${employee.authUser.username}`,
-  //     )
-  //     .toPromise();
+  @NoAuth()
+  @ApiOperation({ summary: 'Resend OTP' })
+  @ApiResponse({ type: Employee, status: 201 })
+  @Post('otp/resend/:id')
+  @UsePipes(ValidationPipe)
+  public async resendOtp(
+    @Param(
+      'id',
+      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
+    )
+    id: number,
+  ) {
+    const employee = await this.employeeService.findById(id);
+    if (!employee) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+    const res = await this.userService.getByEmail(employee.authUser.email);
+    if (!res) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
 
-  //   if (!res?.data?.data?.data?.emp_No) {
-  //     throw new HttpException(
-  //       {
-  //         message: `Invalid Batch number.`,
-  //       },
-  //       HttpStatus.NOT_FOUND,
-  //     );
-  //   }
+    if (otpCounter[employee.id.toString()]) {
+      otpCounter[employee.id.toString()] += 1;
+    } else {
+      otpCounter[employee.id.toString()] = 1;
+    }
 
-  //   if (otpCounter[employee.id.toString()]) {
-  //     otpCounter[employee.id.toString()] += 1;
-  //   } else {
-  //     otpCounter[employee.id.toString()] = 1;
-  //   }
+    const otp = authenticator.generate(
+      employee.id.toString(),
+      otpCounter[employee.id.toString()],
+    );
 
-  //   const otp = authenticator.generate(
-  //     employee.id.toString(),
-  //     otpCounter[employee.id.toString()],
-  //   );
 
-  //   this.emailService.sendMail({
-  //     to: process.env.TEST_EMAIL || res?.data?.data?.data?.email_addr,
-  //     name: employee.authUser.username,
-  //     subject: 'Ozone General Hospital Registration OTP',
-  //     text: `${otp} is your registration code.`,
-  //   });
+    this.emailService.sendMail({
+      to: res.email,
+      name: res.username,
+      subject: 'Ozone Employee Registration OTP',
+      text: `${otp} is your registration code.`,
+    });
 
-  //   return {
-  //     status: 201,
-  //     message: `OTP is resent on this email: ${process.env.TEST_EMAIL || res?.data?.data?.data?.email_addr
-  //       }`,
-  //   };
-  // }
+    return {
+      status: 201,
+      message: `OTP is resent on this email: ${res.email}`,
+    };
+  }
 
   @ApiOperation({ summary: 'approve employee only admin can do it' })
   @ApiResponse({ type: Employee, status: 201 })
@@ -1026,7 +1036,7 @@ export class EmployeeController {
   @Post('change-password')
   @UsePipes(ValidationPipe)
   public async changePassword(@Body() data: ChangePasswordDto, @Request() req) {
-    const user = await this.userService.getByBatchNo(req.user.username);
+    const user = await this.userService.getByEmail(req.user.email);
 
     if (!(await AppHelpers.comparePassword(data.oldPassword, user.password))) {
       throw new HttpException(

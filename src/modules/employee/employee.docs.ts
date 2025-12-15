@@ -63,6 +63,18 @@ const docs = {
     required: true,
     example: 'admin',
     description: 'Unique username',
-  }
+  },
+
+  employeeName: {
+    required: true,
+    example: 'admin admin',
+    description: 'Employee name',
+  },
+
+  email: {
+    required: true,
+    example: 'admin@admin.com',
+    description: 'Employee email',
+  },
 };
 export default docs;

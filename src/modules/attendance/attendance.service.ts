@@ -77,6 +77,7 @@ export class AttendanceService {
       checkInTime: getCurrentDateTime(),
       locationId: data.locationId,
       employee,
+      checkinDeviceId: data.deviceId,
     });
     return attendance;
   };

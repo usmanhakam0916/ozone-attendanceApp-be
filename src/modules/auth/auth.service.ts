@@ -16,9 +16,10 @@ export class AuthService {
     private versionManagerService: VersionManagerService,
   ) { }
 
-  async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.usersService.findOne(username);
-    if (user && (await AppHelpers.comparePassword(pass, user.password))) {
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.usersService.getByEmail(email);
+    const result = AppHelpers.comparePassword(pass, user.password);
+    if (user && result) {
       return user;
     }
     return null;
@@ -26,7 +27,7 @@ export class AuthService {
 
   async login(user: any) {
     return {
-      access_token: this.jwtService.sign({ username: user.username }),
+      access_token: this.jwtService.sign({ username: user.username, email: user.email }),
       role: user.type,
       IS_VPN_DETECTION: process.env.IS_VPN_DETECTION,
     };

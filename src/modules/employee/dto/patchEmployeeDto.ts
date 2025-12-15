@@ -21,12 +21,12 @@ export class PatchEmployeeDto {
   @IsString()
   attendanceType?: string;
 
-  @ApiProperty(docs.attendanceType)
+  @ApiProperty(docs.employeeName)
   @IsOptional()
   @IsString()
   employeeName?: string;
 
-  @ApiProperty(docs.attendanceType)
+  @ApiProperty()
   @IsOptional()
   @IsString()
   designation?: string;

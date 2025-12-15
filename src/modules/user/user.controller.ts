@@ -29,7 +29,7 @@ export class UserController {
     private readonly userService: UserService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-  ) {}
+  ) { }
 
   @ApiOperation({
     summary: 'Create housekeeping user, see the secret in .env file',
