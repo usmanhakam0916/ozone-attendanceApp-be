@@ -698,7 +698,7 @@ export class AttendanceController {
     }
 
     openAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
-    openAttendance.checkinDeviceId = deviceId;
+    openAttendance.checkoutDeviceId = deviceId;
 
     return this.attendanceRepo.save(openAttendance);
   }

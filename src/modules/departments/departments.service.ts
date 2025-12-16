@@ -15,7 +15,7 @@ export class DepartmentsService {
   async create(createDepartmentDto: CreateDepartmentDto) {
     return await this.departmentRepo.save({
       name: createDepartmentDto.name,
-      isActive: true,
+      isActive: createDepartmentDto.isActive,
       isArchive: false,
     });
   }
