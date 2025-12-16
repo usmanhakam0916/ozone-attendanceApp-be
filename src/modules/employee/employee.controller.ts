@@ -920,12 +920,12 @@ export class EmployeeController {
       const department: Department = await this.departmentRepo.findOne(
         data?.departmentId,
       );
-      initialData.department_Name = department.name;
-      initialData.Department = department.name;
-      initialData.emP_Name = data?.employeeName;
-      initialData.Name = data?.employeeName;
-      initialData.position_Name = data?.designation;
-      initialData.Position = data?.designation;
+      initialData.department_Name = department?.name ?? initialData.department_Name;
+      initialData.Department = department?.name ?? initialData.Department;
+      initialData.emP_Name = data?.employeeName ?? initialData.emP_Name;
+      initialData.Name = data?.employeeName ?? initialData.Name;
+      initialData.position_Name = data?.designation ?? initialData.position_Name;
+      initialData.Position = data?.designation ?? initialData.Position;
       initialData = JSON.stringify(initialData);
       user.initialData = initialData;
       existingEmployee.department = department;
