@@ -12,8 +12,12 @@ export class DepartmentsService {
     private readonly departmentRepo: Repository<Department>,
   ) { }
 
-  create(createDepartmentDto: CreateDepartmentDto) {
-    return 'This action adds a new department';
+  async create(createDepartmentDto: CreateDepartmentDto) {
+    return await this.departmentRepo.save({
+      name: createDepartmentDto.name,
+      isActive: true,
+      isArchive: false,
+    });
   }
 
   async search(departmentName: string) {
@@ -55,15 +59,15 @@ export class DepartmentsService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} department`;
+  async findOne(id: number) {
+    return await this.departmentRepo.findOne({ where: { id } });
   }
 
-  update(id: number, updateDepartmentDto: UpdateDepartmentDto) {
-    return `This action updates a #${id} department`;
+  async update(id: number, updateDepartmentDto: UpdateDepartmentDto) {
+    return await this.departmentRepo.update(id, updateDepartmentDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} department`;
+  async remove(id: number) {
+    return await this.departmentRepo.delete(id);
   }
 }

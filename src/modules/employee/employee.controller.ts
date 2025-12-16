@@ -12,7 +12,7 @@ import {
   UsePipes,
   ValidationPipe,
   HttpService,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { hotp as authenticator } from 'otplib';
 import { DeleteResult, Repository, getConnection, getManager } from 'typeorm';
@@ -98,7 +98,7 @@ export class EmployeeController {
       new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
     )
     skip: number,
-    @Request() req,
+    @Req() req,
   ): Promise<{ result: Employee[]; total: number }> {
     try {
       if (req.user.type == userEntity.UserType.EMPLOYEE) {
@@ -113,7 +113,7 @@ export class EmployeeController {
           HttpStatus.BAD_REQUEST,
         );
       }
-      const { badgeNo, deviceType, departmentId } = req.query;
+      const { name, deviceType, departmentId } = req.query;
       const query = this.employeeRepo
         .createQueryBuilder('employee')
         .leftJoinAndSelect('employee.authUser', 'user')
@@ -128,8 +128,14 @@ export class EmployeeController {
           isActiveDirectory: false,
         });
       }
-      if (badgeNo) {
-        query.andWhere('user.username=:username', { username: badgeNo });
+      if (name) {
+        query.andWhere(`"user"."initialData" <> ''`)
+          .andWhere(`"user"."initialData"::text LIKE '{%'`)
+          .andWhere(
+            `("user"."initialData"::jsonb ->> 'emP_Name' ILIKE :name
+      OR "user"."initialData"::jsonb ->> 'Name' ILIKE :name)`,
+            { name: `%${name}%` },
+          );
       }
       if (deviceType && deviceType != 'all') {
         query.andWhere('user.deviceType=:deviceType', { deviceType });
@@ -149,7 +155,7 @@ export class EmployeeController {
   @ApiOperation({ summary: 'Search Employees by badge no' })
   @ApiResponse({ type: Employee, status: 200 })
   @Get('/search')
-  async findByBadge(@Request() req): Promise<Employee[]> {
+  async findByBadge(@Req() req): Promise<Employee[]> {
     if (req.user.type == userEntity.UserType.EMPLOYEE) {
       throw new HttpException(
         `Only admin can use this api`,
@@ -376,7 +382,7 @@ export class EmployeeController {
       new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
     )
     id: number,
-    @Request() req,
+    @Req() req,
   ) {
     if (req.user.type == userEntity.UserType.EMPLOYEE) {
       throw new HttpException(
@@ -707,7 +713,7 @@ export class EmployeeController {
   @UsePipes(ValidationPipe)
   public async approve(
     @Body() data: approveDto,
-    @Request() req,
+    @Req() req,
   ): Promise<Employee> {
     if (req.user.type !== 'admin') {
       throw new HttpException(`Unauthorized`, HttpStatus.UNAUTHORIZED);
@@ -768,7 +774,7 @@ export class EmployeeController {
       new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
     )
     id: number,
-    @Request() req,
+    @Req() req,
   ): Promise<DeleteResult> {
     if (req.user.type !== userEntity.UserType.ADMIN) {
       throw new HttpException(
@@ -801,7 +807,7 @@ export class EmployeeController {
       new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
     )
     id: number,
-    @Request() req,
+    @Req() req,
   ): Promise<DeleteResult> {
     if (req.user.type !== userEntity.UserType.ADMIN) {
       throw new HttpException(
@@ -1035,7 +1041,7 @@ export class EmployeeController {
   @ApiResponse({ type: Employee, status: 201 })
   @Post('change-password')
   @UsePipes(ValidationPipe)
-  public async changePassword(@Body() data: ChangePasswordDto, @Request() req) {
+  public async changePassword(@Body() data: ChangePasswordDto, @Req() req) {
     const user = await this.userService.getByEmail(req.user.email);
 
     if (!(await AppHelpers.comparePassword(data.oldPassword, user.password))) {
@@ -1065,7 +1071,7 @@ export class EmployeeController {
   public async removeDevice(
     @Param('auth_user_id')
     auth_user_id: string,
-    @Request() req,
+    @Req() req,
   ) {
     if (req.user.type == userEntity.UserType.EMPLOYEE) {
       throw new HttpException(
@@ -1094,7 +1100,7 @@ export class EmployeeController {
   public async removeFaceId(
     @Param('employee_id')
     employee_id: string,
-    @Request() req,
+    @Req() req,
   ) {
     if (req.user.type == userEntity.UserType.EMPLOYEE) {
       throw new HttpException(
@@ -1123,7 +1129,7 @@ export class EmployeeController {
   //   by: string,
   //   @Param('batch')
   //   batch: string,
-  //   @Request() req,
+  //   @Req() req,
   // ) {
   //   if (req.user.type == UserType.EMPLOYEE) {
   //     throw new HttpException(

@@ -7,51 +7,66 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 
+@ApiBearerAuth()
+@ApiTags('Departments')
 @Controller('departments')
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) { }
 
   @Post()
-  create(@Body() createDepartmentDto: CreateDepartmentDto) {
-    return this.departmentsService.create(createDepartmentDto);
+  @ApiOperation({ summary: 'Create department' })
+  @ApiResponse({ status: 200 })
+  async create(@Body() createDepartmentDto: CreateDepartmentDto) {
+    return await this.departmentsService.create(createDepartmentDto);
   }
 
   @Get('search/:departmentName')
+  @ApiOperation({ summary: 'Search department' })
   @ApiResponse({ status: 200 })
-  search(@Param('departmentName') departmentName: string) {
-    return this.departmentsService.search(departmentName);
+  async search(@Param('departmentName') departmentName: string) {
+    return await this.departmentsService.search(departmentName);
   }
 
   @Get()
-  findAll() {
-    return this.departmentsService.findAll();
+  @ApiOperation({ summary: 'Get all departments' })
+  @ApiResponse({ status: 200 })
+  async findAll() {
+    return await this.departmentsService.findAll();
   }
 
   @Get(':take/:skip')
-  findPaginatedData(@Param('take') take: number, @Param('skip') skip: number) {
-    return this.departmentsService.findPaginatedData(take, skip);
+  @ApiOperation({ summary: 'Get all departments' })
+  @ApiResponse({ status: 200 })
+  async findPaginatedData(@Param('take') take: number, @Param('skip') skip: number) {
+    return await this.departmentsService.findPaginatedData(take, skip);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.departmentsService.findOne(+id);
+  @ApiOperation({ summary: 'Get department by id' })
+  @ApiResponse({ status: 200 })
+  async findOne(@Param('id') id: string) {
+    return await this.departmentsService.findOne(+id);
   }
 
   @Patch(':id')
-  update(
+  @ApiOperation({ summary: 'Update department by id' })
+  @ApiResponse({ status: 201 })
+  async update(
     @Param('id') id: string,
     @Body() updateDepartmentDto: UpdateDepartmentDto,
   ) {
-    return this.departmentsService.update(+id, updateDepartmentDto);
+    return await this.departmentsService.update(+id, updateDepartmentDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.departmentsService.remove(+id);
+  @ApiOperation({ summary: 'Delete department by id' })
+  @ApiResponse({ status: 201 })
+  async remove(@Param('id') id: string) {
+    return await this.departmentsService.remove(+id);
   }
 }
