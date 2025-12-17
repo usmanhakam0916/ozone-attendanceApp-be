@@ -838,13 +838,13 @@ async function generate_csv(data: any) {
 
     items.push({
       'Attendance Id': item.id,
-      'Employee No': initialData ? initialData['Employee No'] : '',
-      'Employee Name': initialData['Name'] || '',
-      Department: initialData['Department'] || '',
+      'Employee No': initialData ? initialData['Employee No'] ?? '' : '',
+      'Employee Name': initialData['Name'] ?? '',
+      Department: initialData['Department'] ?? '',
       'Check-in Time': item.checkInTime ?? 'No Check-in',
       'CheckOut Time': item.checkInTime ? (item.checkoutTime ? item.checkoutTime : 'No Checkout') : 'No Checkout',
       'Check-in Location': item.checkInTime ? item.location.name : '-',
-      'CheckOut Location': item.checkInTime ? (item.checkoutTime ? item.checkoutLocation.name : '-') : '-',
+      'CheckOut Location': item.checkInTime ? (item.checkoutTime ? item.location.name : '-') : '-',
       'Under Time': underTime,
       'Over Time': overTime,
     });
