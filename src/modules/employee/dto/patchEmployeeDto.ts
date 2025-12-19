@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -9,6 +10,11 @@ import {
 } from 'class-validator';
 import { PatchUserDto } from 'src/modules/user/dto/patchUserDto';
 import docs from '../employee.docs';
+
+export enum Language {
+  EN = 'en',
+  AR = 'ar',
+}
 
 export class PatchEmployeeDto {
   // @ApiProperty(docs.checkInRowId)
@@ -66,7 +72,12 @@ export class PatchEmployeeDto {
   // faceId?: number;
 
   @ApiProperty({ type: () => PatchUserDto })
-  @ValidateNested({ each: true })
+  @ValidateNested()
   @Type(() => PatchUserDto)
   authUser: PatchUserDto;
+
+  @ApiProperty()
+  @IsEnum(Language)
+  @IsOptional()
+  language?: Language;
 }

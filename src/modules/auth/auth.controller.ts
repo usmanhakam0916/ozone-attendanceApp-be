@@ -24,14 +24,13 @@ import { AdminService } from '../admin/admin.service';
 import { EmployeeService } from '../employee/employee.service';
 import * as dotenv from 'dotenv';
 import { UserService } from '../user/user.service';
-import { User, UserStatus, UserType, validUserStatus } from '../user/user.entity';
+import { User, UserType, validUserStatus } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/loginDto';
 import { LocalAuthGuard } from './local-auth.guard';
 import { NoAuth } from './no-auth.guard';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AppHelpers } from 'src/helpers/app.helpers';
 import { MeQueryDto } from './dto/meDto';
 
 dotenv.config();

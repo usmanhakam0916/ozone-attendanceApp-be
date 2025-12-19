@@ -901,6 +901,11 @@ export class EmployeeController {
     } else if (data.groupId == null && existingEmployee.group) {
       existingEmployee.group = null;
     }
+
+    if (data.language) {
+      existingEmployee.language = data.language;
+    }
+
     const user = existingEmployee.authUser;
     let initialData = JSON.parse(user?.initialData);
     if (data.authUser) {

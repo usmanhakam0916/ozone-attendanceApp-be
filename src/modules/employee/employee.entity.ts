@@ -24,6 +24,7 @@ import { Location } from '../location/location.entity';
 
 import { User } from '../user/user.entity';
 import docs from './employee.docs';
+import { Language } from './dto/patchEmployeeDto';
 
 export enum AttendanceType {
   SINGLE = 'Single',
@@ -103,4 +104,13 @@ export class Employee {
     onDelete: 'SET NULL',
   })
   department: Department;
+
+
+  @Column({
+    type: 'enum',
+    enum: Language,
+    default: Language.EN,
+  })
+  @IsOptional()
+  language: Language;
 }
