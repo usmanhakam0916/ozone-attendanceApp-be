@@ -18,6 +18,8 @@ import { AdminService } from '../admin/admin.service';
 import { VersionManagerService } from '../versionManager/version_manager.service';
 import { VersionManager } from '../versionManager/version_manager.entity';
 import { Department } from '../departments/entities/department.entity';
+import { Attendance } from '../attendance/attendance.entity';
+import { Location } from '../location/location.entity';
 
 // todo: this shouldn't be here
 dotenv.config();
@@ -37,7 +39,7 @@ dotenv.config();
       Employee,
       Admin,
       VersionManager,
-      Department,
+      Department, Attendance, Location
     ]),
   ],
   controllers: [AuthController],

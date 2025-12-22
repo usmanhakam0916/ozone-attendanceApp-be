@@ -436,9 +436,10 @@ export class EmployeeController {
         where: { username: data.userName },
       });
       if (existingUser) {
-        return {
-          message: `Employee already exist against this user name :${data.userName}`,
-        };
+        throw new HttpException(
+          `Employee already exist against this user name :${data.userName}`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
 
@@ -446,16 +447,17 @@ export class EmployeeController {
         where: { email: data.email },
       });
       if (existingUser) {
-        return {
-          message: `Employee already exist against this email :${data.email}`,
-        };
+        throw new HttpException(
+          `Employee already exist against this email :${data.email}`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const newEmploye = new Employee();
 
       newEmploye.attendanceRadius = 100;
 
-      newEmploye.attendanceType = AttendanceType.MULTIPLE;
+      newEmploye.attendanceType = AttendanceType.SINGLE;
 
       if (data.macAddress) {
         newEmploye.macAddress = data.macAddress;
@@ -499,8 +501,9 @@ export class EmployeeController {
       initialData = {
         department_Name: department?.name || '',
         Department: department?.name || '',
-        emP_Name: data?.employeeName,
-        Name: data?.employeeName,
+        emP_Name: data?.firstName + ' ' + data?.lastName,
+        FirstName: data?.firstName,
+        LastName: data?.lastName,
         emp_Status: user.status.charAt(0).toUpperCase(),
         position_Name: '',
         Position: '',
@@ -510,8 +513,6 @@ export class EmployeeController {
       newEmploye.department = department;
       user = await this.userRepo.save(user);
       newEmploye.authUser = user;
-      const verificationOtp = Math.floor(1000 + Math.random() * 9000);
-
       const finalResult = await this.employeeRepo.save(newEmploye);
 
 
@@ -586,8 +587,9 @@ export class EmployeeController {
       initialData = {
         department_Name: department.name,
         Department: department.name,
-        emP_Name: data?.employeeName,
-        Name: data?.employeeName,
+        emP_Name: `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim(),
+        FirstName: data?.firstName,
+        LastName: data?.lastName,
         emp_Status: data.status.charAt(0).toUpperCase(),
         position_Name: data?.designation,
         Position: data?.designation,
@@ -933,8 +935,9 @@ export class EmployeeController {
       );
       initialData.department_Name = department?.name ?? initialData.department_Name;
       initialData.Department = department?.name ?? initialData.Department;
-      initialData.emP_Name = data?.employeeName ?? initialData.emP_Name;
-      initialData.Name = data?.employeeName ?? initialData.Name;
+      initialData.emP_Name = (`${data.firstName ?? ''} ${data.lastName ?? ''}`.trim()) ?? initialData.emP_Name;
+      initialData.FirstName = data?.firstName ?? initialData.FirstName;
+      initialData.LastName = data?.lastName ?? initialData.LastName;
       initialData.position_Name = data?.designation ?? initialData.position_Name;
       initialData.Position = data?.designation ?? initialData.Position;
       initialData = JSON.stringify(initialData);

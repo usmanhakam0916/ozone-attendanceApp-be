@@ -1,14 +1,9 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNumber, IsString, Max, Min } from "class-validator";
-import docs from "../attendance.docs";
-import { UpdateRequestStatus } from "../attendance.entity";
+import { ApiProperty, IntersectionType, OmitType } from "@nestjs/swagger";
+import { IsBoolean } from "class-validator";
+import { UpdateAttendenceTimeDto } from "./updateAttendentTimeDto";
 
-export class UpdateAttendentRequestDto {
-    @ApiProperty(docs.updateAttendenceTimeDtoAttendanceId)
-    @IsNumber()
-    attendanceId: number;
-
-    @ApiProperty(docs.updateAttendenceTimeDtoStatus)
-    @IsEnum(UpdateRequestStatus)
-    status: UpdateRequestStatus;
+export class UpdateAttendentRequestDto extends OmitType(UpdateAttendenceTimeDto, ['comment'] as const) {
+    @ApiProperty()
+    @IsBoolean()
+    approved: boolean;
 }

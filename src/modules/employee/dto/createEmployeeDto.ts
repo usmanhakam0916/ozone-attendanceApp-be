@@ -28,10 +28,15 @@ export class CreateEmployeeDto {
   @IsString()
   employeeNumber?: string;
 
-  @ApiProperty(docs.attendanceType)
+  @ApiProperty(docs.firstName)
   @IsOptional()
   @IsString()
-  employeeName?: string;
+  firstName?: string;
+
+  @ApiProperty(docs.lastName)
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 
   @ApiProperty(docs.attendanceType)
   @IsOptional()

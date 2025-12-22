@@ -1,23 +1,19 @@
-import { Repository, Like } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   HttpException,
   HttpService,
   HttpStatus,
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OZONE_BACKEND_BASE_URL } from 'src/app.constants';
 import { Attendance } from './attendance.entity';
 import {
   CreateAttendanceDto,
-  CreateAttendanceWithQRCodeDto,
 } from './dto/createAttendanceDto';
-import { UserService } from '../user/user.service';
-import { User, UserType } from '../user/user.entity';
+import { UserType } from '../user/user.entity';
 import { FileService } from '../file/file.service';
 import { EmployeeService } from '../employee/employee.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { LogService } from 'src/log/log.service';
 import { LocationService } from '../location/location.service';
 import { Location } from '../location/location.entity';
@@ -73,10 +69,12 @@ export class AttendanceService {
 
   create = async (data: CreateAttendanceDto): Promise<Attendance> => {
     const employee = await this.employeeService.findById(data.employeeId);
+    const location = employee.locations && employee.locations.length > 0 ? employee.locations.find((location) => location.id === data.locationId) : null;
+
     const attendance = await this.attendanceRepo.save({
       checkInTime: getCurrentDateTime(),
-      locationId: data.locationId,
-      employee,
+      location: location,
+      employee: employee,
       checkinDeviceId: data.deviceId,
     });
     return attendance;

@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNumber, IsString, Max, Min } from "class-validator";
+import { IsEnum, IsNotEmpty, IsNumber, IsString, Max, Min } from "class-validator";
 import docs from "../attendance.docs";
 
 
@@ -7,6 +7,7 @@ export enum AttendenceTimeType {
     CHECKIN = 'CHECKIN',
     CHECKOUT = 'CHECKOUT'
 }
+
 export class UpdateAttendenceTimeDto {
     @ApiProperty(docs.updateAttendenceTimeDtoAttendanceId)
     @IsNumber()
@@ -27,4 +28,9 @@ export class UpdateAttendenceTimeDto {
     @Min(0)
     @Max(59)
     minute: number;
+
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    comment: string;
 }

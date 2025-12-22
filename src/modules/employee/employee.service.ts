@@ -75,8 +75,10 @@ export class EmployeeService {
     const authUser = await this.userRepo.findOne({
       id,
     });
-
-    return this.employeeRepo.findOne({ authUser });
+    const result = await this.employeeRepo.findOne({
+      where: { authUserId: authUser.id },
+      relations: ['locations'],
+    }); return result;
   };
 
   searchEmployees = async (query) => {

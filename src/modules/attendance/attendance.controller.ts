@@ -568,10 +568,10 @@ export class AttendanceController {
 
   @ApiOperation({ summary: 'create new Attendance Update request status' })
   @ApiResponse({ type: Attendance, status: 201 })
-  @Patch('/update/attendence/request/status')
+  @Patch('/update/attendence/request')
   @UsePipes(ValidationPipe)
-  public async UpdateAttendenceRequestStatus(@Body() data: UpdateAttendentRequestDto, @Req() req) {
-    const targetAttendance = await this.attendanceRepo.findOne({ id: data.attendanceId });
+  public async UpdateAttendenceRequest(@Body() data: UpdateAttendenceTimeDto) {
+    const targetAttendance = await this.attendanceRepo.findOne({ where: { id: data.attendanceId }, relations: ['employee'] });
     if (!targetAttendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${data.attendanceId}`,
@@ -579,76 +579,164 @@ export class AttendanceController {
       );
     }
 
-    // Only Admin can directly approve/reject, in rejected case it will be set to none
-    if (req.user.type === UserType.ADMIN &&
-      [UpdateRequestStatus.CHECKIN_REQUESTED, UpdateRequestStatus.CHECKOUT_REQUESTED].includes(targetAttendance.updateRequestStatus) &&
-      [UpdateRequestStatus.CHECKIN_APPROVED, UpdateRequestStatus.CHECKOUT_APPROVED, UpdateRequestStatus.REJECTED].includes(data.status)) {
-      if (UpdateRequestStatus.CHECKIN_APPROVED === data.status) {
-        targetAttendance.updateRequestStatus = UpdateRequestStatus.CHECKIN_APPROVED;
-      } else if (UpdateRequestStatus.CHECKOUT_APPROVED === data.status) {
-        targetAttendance.updateRequestStatus = UpdateRequestStatus.CHECKOUT_APPROVED;
-      } else {
-        //(UpdateRequestStatus.REJECTED ===data.status)
-        targetAttendance.updateRequestStatus = UpdateRequestStatus.NONE;
-      }
-    } else if (targetAttendance.updateRequestStatus === UpdateRequestStatus.NONE) {
-      if (!targetAttendance.checkoutTime) {
-        throw new HttpException(
-          `Checkout is required for attendence update request`,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-      // Employees can only request update
-      targetAttendance.updateRequestStatus = data.status;
-    } else {
+    if (targetAttendance.updateRequestStatus !== UpdateRequestStatus.NONE) {
       throw new HttpException(
-        `Invalida Attendance Request`,
+        `Attendance update request already in process.`,
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    if (data.attendenceTimeType === AttendenceTimeType.CHECKIN && !targetAttendance.checkInTime) {
+      throw new HttpException(
+        `Checkin in first.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    } else if (data.attendenceTimeType === AttendenceTimeType.CHECKOUT && !targetAttendance.checkoutTime) {
+      throw new HttpException(
+        `Checkout out first.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const targetDate = new Date(targetAttendance.checkInTime).toISOString().split('T')[0];
+    let attendances = await this.attendanceRepo
+      .createQueryBuilder('attendance')
+      .where('attendance.employeeId = :empId', { empId: targetAttendance.employee.id })
+      .andWhere('DATE(attendance.checkInTime) = :date', { date: targetDate })
+      .getMany();
+    const params = { time: [data.hour, data.minute] };
+
+    if (data.attendenceTimeType === AttendenceTimeType.CHECKIN) {
+      if (attendances.length > 1) {
+        attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+        const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+        const prevAttendance = attendances[targetAttendanceIndex - 1] ?? null;
+
+        if (prevAttendance && prevAttendance.checkoutTime) {
+          const prevCheckout = new Date(prevAttendance.checkoutTime);
+          const newCheckIn = new Date(setDateTime(targetAttendance.checkInTime, params));
+
+          if (prevCheckout.getTime() >= newCheckIn.getTime()) {
+            throw new HttpException(
+              `New check-in time must be greater then previous checkout time at ${prevAttendance.checkoutTime}`,
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+        }
+      }
+    } else {
+      //data.attendenceTimeType === AttendenceTimeType.CHECKOUT
+      if (attendances.length > 1) {
+        attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+        const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+        const nextAttendance = attendances[targetAttendanceIndex + 1] ?? null;
+
+        if (nextAttendance && nextAttendance.checkInTime) {
+          const nextCheckIn = new Date(nextAttendance.checkInTime);
+          const newCheckOut = new Date(setDateTime(targetAttendance.checkInTime, params));
+
+          if (nextCheckIn.getTime() <= newCheckOut.getTime()) {
+            throw new HttpException(
+              `New checkout time must be less then next check-in time at ${nextAttendance.checkInTime}`,
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+        }
+      }
+    }
+
+    targetAttendance.updateRequestStatus = data.attendenceTimeType === AttendenceTimeType.CHECKIN ? UpdateRequestStatus.CHECKIN_REQUESTED : UpdateRequestStatus.CHECKOUT_REQUESTED;
+    targetAttendance.updateRequestData = {
+      attendenceTimeType: data.attendenceTimeType,
+      time: [data.hour, data.minute],
+      comment: data.comment,
+    }
+
     const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
     return updatedAttendance;
   }
 
-  @ApiOperation({ summary: 'udpate Attendance request check-in or checkout-time' })
+  @ApiOperation({ summary: 'update Attendance request check-in or checkout-time' })
   @ApiResponse({ type: Attendance, status: 201 })
-  @Patch('/update/attendence/time')
+  @Patch('/process/update/attendence/request')
   @UsePipes(ValidationPipe)
-  public async UpdateAttendenceTime(@Body() data: UpdateAttendenceTimeDto, @Req() req) {
-    if (req.user.type !== UserType.EMPLOYEE) {
+  public async ProcessUpdateAttendenceRequest(@Body() data: UpdateAttendentRequestDto, @Req() req) {
+    if (req.user.type === UserType.EMPLOYEE) {
       throw new HttpException(
-        'Only employees can update their attendance time',
+        'Only Admin can update their attendance time',
         HttpStatus.FORBIDDEN,
       );
     }
 
-    const targetAttendance = await this.attendanceRepo.findOne({ id: data.attendanceId });
+    const targetAttendance = await this.attendanceRepo.findOne({ where: { id: data.attendanceId }, relations: ['employee'] });
     if (!targetAttendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${data.attendanceId}`,
         HttpStatus.NOT_FOUND,
       );
     }
-    else if (![UpdateRequestStatus.CHECKOUT_APPROVED, UpdateRequestStatus.CHECKIN_APPROVED].includes(targetAttendance.updateRequestStatus)) {
-      throw new HttpException(
-        `Attendance update request is not approved`,
-        HttpStatus.BAD_REQUEST,
-      );
+
+
+    if (data.approved) {
+      // update the time
+      const targetDate = new Date(targetAttendance.checkInTime).toISOString().split('T')[0];
+      let attendances = await this.attendanceRepo
+        .createQueryBuilder('attendance')
+        .where('attendance.employeeId = :empId', { empId: targetAttendance.employee.id })
+        .andWhere('DATE(attendance.checkInTime) = :date', { date: targetDate })
+        .getMany();
+      const params = { time: [data.hour, data.minute] };
+
+      if (targetAttendance.updateRequestData.attendenceTimeType === AttendenceTimeType.CHECKIN) {
+        if (attendances.length > 1) {
+          attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+          const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+          const prevAttendance = attendances[targetAttendanceIndex - 1] ?? null;
+
+          if (prevAttendance && prevAttendance.checkoutTime) {
+            const prevCheckout = new Date(prevAttendance.checkoutTime);
+            const newCheckIn = new Date(setDateTime(targetAttendance.checkInTime, params));
+
+            if (prevCheckout.getTime() >= newCheckIn.getTime()) {
+              throw new HttpException(
+                `New check-in time must be greater then previous checkout time at ${prevAttendance.checkoutTime}`,
+                HttpStatus.BAD_REQUEST,
+              );
+            }
+          }
+        }
+
+        targetAttendance.checkInTime = setDateTime(targetAttendance.checkInTime, params);
+      } else {
+        if (attendances.length > 1) {
+          attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+          const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+          const nextAttendance = attendances[targetAttendanceIndex + 1] ?? null;
+
+          if (nextAttendance && nextAttendance.checkInTime) {
+            const nextCheckIn = new Date(nextAttendance.checkInTime);
+            const newCheckOut = new Date(setDateTime(targetAttendance.checkInTime, params));
+
+            if (nextCheckIn.getTime() <= newCheckOut.getTime()) {
+              throw new HttpException(
+                `New checkout time must be less then next check-in time at ${nextAttendance.checkInTime}`,
+                HttpStatus.BAD_REQUEST,
+              );
+            }
+          }
+        }
+
+        targetAttendance.checkoutTime = setDateTime(targetAttendance.checkoutTime, params);
+      }
     }
-
-    const params = { time: [data.hour, data.minute] };
-
-    if (data.attendenceTimeType === AttendenceTimeType.CHECKIN) {
-      targetAttendance.checkInTime = setDateTime(targetAttendance.checkInTime, params);
-    } else {
-      targetAttendance.checkoutTime = setDateTime(targetAttendance.checkoutTime, params);
-    }
-
+    // just update the status if admin rejects the request 
     targetAttendance.updateRequestStatus = UpdateRequestStatus.NONE;
+    targetAttendance.updateRequestData = null;
 
     const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
     return updatedAttendance;
   }
+
   @ApiOperation({ summary: 'Simple Check-in' })
   @ApiResponse({ type: Attendance, status: 201 })
   @Post('checkin/:deviceId')
@@ -662,6 +750,9 @@ export class AttendanceController {
     // Sort by checkInTime descending to get the latest
     todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
     const latestAttendance = todaysAttendances[0];
+    if (latestAttendance && latestAttendance.checkInTime) {
+      throw new HttpException('You have already checked in', HttpStatus.BAD_REQUEST);
+    }
 
 
     const location = employee.locations && employee.locations.length > 0 ? employee.locations[0] : null;
@@ -687,20 +778,23 @@ export class AttendanceController {
     }
 
     const todaysAttendances = getTodaysAttendances(employee);
-    // Find the latest open attendance (no checkout time)
-    const openAttendance = todaysAttendances.find(a => !a.checkoutTime);
-
-    if (!openAttendance) {
+    // Sort by checkInTime descending to get the latest
+    todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
+    const latestAttendance = todaysAttendances[0];
+    if (latestAttendance.checkoutTime) {
+      throw new HttpException('You have already checked out', HttpStatus.BAD_REQUEST);
+    }
+    if (!latestAttendance) {
       throw new HttpException('No active check-in found to check out', HttpStatus.BAD_REQUEST);
     }
-    if (openAttendance.checkinDeviceId !== deviceId) {
+    if (latestAttendance.checkinDeviceId !== deviceId) {
       throw new HttpException('Device id does not match', HttpStatus.BAD_REQUEST);
     }
 
-    openAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
-    openAttendance.checkoutDeviceId = deviceId;
+    latestAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
+    latestAttendance.checkoutDeviceId = deviceId;
 
-    return this.attendanceRepo.save(openAttendance);
+    return this.attendanceRepo.save(latestAttendance);
   }
 }
 

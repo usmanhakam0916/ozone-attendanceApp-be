@@ -23,10 +23,7 @@ import { User } from '../user/user.entity';
 export enum UpdateRequestStatus {
   NONE = '',
   CHECKIN_REQUESTED = 'CHECKIN_REQUESTED',
-  CHECKOUT_REQUESTED = 'CHECKOUT_REQUESTED',
-  CHECKIN_APPROVED = 'CHECKIN_APPROVED',
-  CHECKOUT_APPROVED = 'CHECKOUT_APPROVED',
-  REJECTED = 'REJECTED',
+  CHECKOUT_REQUESTED = 'CHECKOUT_REQUESTED'
 }
 
 @Entity()
@@ -114,6 +111,9 @@ export class Attendance {
 
   @Column({ default: null })
   syncedAt: Date;
+
+  @Column({ type: 'json', nullable: true })
+  updateRequestData?: Record<string, any>;
 
   @ApiProperty(docs.updateRequestStatus)
   @IsString()

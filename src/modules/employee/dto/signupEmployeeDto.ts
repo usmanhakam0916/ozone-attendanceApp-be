@@ -8,10 +8,15 @@ export class SignupEmployeeDto {
     @IsNotEmpty()
     email: string;
 
-    @ApiProperty(docs.employeeName)
+    @ApiProperty(docs.firstName)
     @IsOptional()
     @IsString()
-    employeeName?: string;
+    firstName?: string;
+
+    @ApiProperty(docs.lastName)
+    @IsOptional()
+    @IsString()
+    lastName?: string;
 
     @ApiProperty(docs.userName)
     @IsString()
@@ -36,7 +41,6 @@ export class SignupEmployeeDto {
     @ApiProperty(docs.locations)
     locations?: number[];
 
-
     @ApiProperty()
     @IsNumber()
     @IsOptional()
@@ -47,4 +51,8 @@ export class SignupEmployeeDto {
     @IsNotEmpty()
     @MinLength(6)
     password: string;
+
+    @ApiProperty(docs.deviceId)
+    @IsString()
+    deviceId: string;
 }

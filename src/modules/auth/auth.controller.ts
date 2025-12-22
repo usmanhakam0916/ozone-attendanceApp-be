@@ -24,7 +24,7 @@ import { AdminService } from '../admin/admin.service';
 import { EmployeeService } from '../employee/employee.service';
 import * as dotenv from 'dotenv';
 import { UserService } from '../user/user.service';
-import { User, UserType, validUserStatus } from '../user/user.entity';
+import { User, UserStatus, UserType, validUserStatus } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/loginDto';
 import { LocalAuthGuard } from './local-auth.guard';
@@ -170,6 +170,15 @@ export class AuthController {
         throw new HttpException(
           {
             message: `Employee is no more active contact to HRM`,
+            status: user.status,
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      if (user.status === UserStatus.HOLD) {
+        throw new HttpException(
+          {
+            message: `Employee is on hold contact to HRM`,
             status: user.status,
           },
           HttpStatus.UNAUTHORIZED,

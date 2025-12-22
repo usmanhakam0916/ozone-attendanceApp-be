@@ -65,9 +65,15 @@ const docs = {
     description: 'Unique username',
   },
 
-  employeeName: {
+  firstName: {
     required: true,
-    example: 'admin admin',
+    example: 'first',
+    description: 'Employee name',
+  },
+
+  lastName: {
+    required: true,
+    example: 'last',
     description: 'Employee name',
   },
 
@@ -76,5 +82,11 @@ const docs = {
     example: 'admin@admin.com',
     description: 'Employee email',
   },
+
+  deviceId: {
+    required: true,
+    example: 'abcdeeddasd',
+    description: 'This is check in location id',
+  }
 };
 export default docs;
