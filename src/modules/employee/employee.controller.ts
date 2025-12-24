@@ -516,7 +516,7 @@ export class EmployeeController {
       const finalResult = await this.employeeRepo.save(newEmploye);
 
 
-      this.resendOtp(finalResult.id);
+      this.resendOtp(user.email);
 
       return finalResult;
     } catch (error) {
@@ -643,12 +643,19 @@ export class EmployeeController {
   @Post('otp/verify')
   @UsePipes(ValidationPipe)
   public async otpVerify(@Body() data: OtpVerifyDto): Promise<Employee> {
-    const employee = await this.employeeService.findById(data.employeeId);
+    const res = await this.userService.getByEmail(data.email);
+    if (!res) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+    const employee = await this.employeeService.findByAuthUserId(res.id);
+    if (!employee) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
 
     const isValid = authenticator.check(
       data.otp,
-      data.employeeId.toString(),
-      otpCounter[data.employeeId.toString()],
+      employee.id.toString(),
+      otpCounter[employee.id.toString()],
     );
 
     if (isValid) {
@@ -666,21 +673,21 @@ export class EmployeeController {
   @NoAuth()
   @ApiOperation({ summary: 'Resend OTP' })
   @ApiResponse({ type: Employee, status: 201 })
-  @Post('otp/resend/:id')
+  @Post('otp/resend/:email')
   @UsePipes(ValidationPipe)
   public async resendOtp(
     @Param(
-      'id',
+      'email',
       new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
     )
-    id: number,
+    email: string,
   ) {
-    const employee = await this.employeeService.findById(id);
-    if (!employee) {
+    const res = await this.userService.getByEmail(email);
+    if (!res) {
       throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
     }
-    const res = await this.userService.getByEmail(employee.authUser.email);
-    if (!res) {
+    const employee = await this.employeeService.findByAuthUserId(res.id);
+    if (!employee) {
       throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
     }
 
