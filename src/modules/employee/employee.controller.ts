@@ -676,11 +676,7 @@ export class EmployeeController {
   @Post('otp/resend/:email')
   @UsePipes(ValidationPipe)
   public async resendOtp(
-    @Param(
-      'email',
-      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
-    )
-    email: string,
+    @Param('email') email: string,
   ) {
     const res = await this.userService.getByEmail(email);
     if (!res) {
