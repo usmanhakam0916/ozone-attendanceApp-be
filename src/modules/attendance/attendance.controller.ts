@@ -749,11 +749,17 @@ export class AttendanceController {
     const todaysAttendances = getTodaysAttendances(employee);
     // Sort by checkInTime descending to get the latest
     todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
-    const latestAttendance = todaysAttendances[0];
-    if (latestAttendance && latestAttendance.checkInTime) {
-      throw new HttpException('You have already checked in', HttpStatus.BAD_REQUEST);
-    }
 
+    if (employee.attendanceType == AttendanceType.SINGLE && todaysAttendances.length === 1) {
+      throw new HttpException('Can only checkin once in a day.', HttpStatus.BAD_REQUEST);
+    } else if (employee.attendanceType == AttendanceType.DOUBLE && todaysAttendances.length === 2) {
+      throw new HttpException('Can only checkout twice a day. ', HttpStatus.BAD_REQUEST);
+    }// else case is for multiple checkin checkout so no need to check
+
+    const latestAttendance = todaysAttendances[0];
+    if (latestAttendance && latestAttendance.checkInTime && !latestAttendance.checkoutTime) {
+      throw new HttpException('You have already checked in. Please checkout first.', HttpStatus.BAD_REQUEST);
+    }
 
     const location = employee.locations && employee.locations.length > 0 ? employee.locations[0] : null;
 

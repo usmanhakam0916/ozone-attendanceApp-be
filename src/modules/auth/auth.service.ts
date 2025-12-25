@@ -7,7 +7,7 @@ import { AppHelpers } from 'src/helpers/app.helpers';
 import { User, UserStatus, UserType } from '../user/user.entity';
 import { EmployeeService } from '../employee/employee.service';
 import { Attendance } from '../attendance/attendance.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Location } from '../location/location.entity';
 
@@ -37,7 +37,7 @@ export class AuthService {
 
   async login(user: any) {
     const targetEmployee = (await this.employeeService.findByAuthUserId(user.id));
-    const todayAttendancesArray = await this.attendenceRepo.find({ where: { checkInTime: new Date().toISOString().split('T')[0], employee: { id: targetEmployee.id } } });
+    const todayAttendancesArray = await this.attendenceRepo.find({ where: { checkInTime: Like(`${new Date().toISOString().split('T')[0]}%`), employee: { id: targetEmployee.id } } });
     return {
       access_token: this.jwtService.sign({ username: user.username, email: user.email }),
       role: user.type,

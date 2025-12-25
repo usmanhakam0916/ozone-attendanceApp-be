@@ -53,7 +53,7 @@ const docs = {
   },
   macAddress: { required: true, example: 'abcdes' },
 
-  isMac: { required: true, example: true },
+  isMac: { required: true, example: false },
 
   groupId: { required: false, example: 1 },
 
