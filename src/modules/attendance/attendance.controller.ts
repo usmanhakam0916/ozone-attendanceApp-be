@@ -911,7 +911,7 @@ async function generate_csv(data: any) {
 
   let underTime = '';
   let overTime = '';
-
+  data.sort((a, b) => new Date(a.id).getTime() - new Date(b.id).getTime());
   const items = [];
   data.forEach((item) => {
     const initialData = item.employee
@@ -922,31 +922,29 @@ async function generate_csv(data: any) {
       const checkIn = new Date(item.checkInTime);
       const checkOut = new Date(item.checkoutTime);
 
-      const workedHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60); // hours
+      const workedMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60); // minutes
+      const expectedMinutes = EXPECTED_HOURS * 60;
 
-      if (workedHours < EXPECTED_HOURS) {
-        overTime = '';
-        underTime = formatHoursToHMS(EXPECTED_HOURS - workedHours);
-      } else {
-        overTime = formatHoursToHMS(workedHours - EXPECTED_HOURS);
-        underTime = '';
-      }
-    } else {
-      underTime = '';
       overTime = '';
+      underTime = '';
+
+      if (workedMinutes < expectedMinutes) {
+        underTime = Number(expectedMinutes - workedMinutes).toFixed(0); // minutes
+      } else {
+        overTime = Number(workedMinutes - expectedMinutes).toFixed(0); // minutes
+      }
     }
 
     items.push({
       'Attendance Id': item.id,
-      'Employee No': initialData ? initialData['Employee No'] ?? '' : '',
-      'Employee Name': initialData['Name'] ?? '',
-      Department: initialData['Department'] ?? '',
+      'Employee No': item.employee.id ?? '',
+      'Employee Name': `${initialData['FirstName']} ${initialData['LastName']}` || '',
       'Check-in Time': item.checkInTime ?? 'No Check-in',
       'CheckOut Time': item.checkInTime ? (item.checkoutTime ? item.checkoutTime : 'No Checkout') : 'No Checkout',
       'Check-in Location': item.checkInTime ? item.location.name : '-',
       'CheckOut Location': item.checkInTime ? (item.checkoutTime ? item.location.name : '-') : '-',
-      'Under Time': underTime,
-      'Over Time': overTime,
+      'Under Time (min)': underTime,
+      'Over Time (min)': overTime,
     });
   });
   const loopIteration = Math.ceil(items.length / 50000);
