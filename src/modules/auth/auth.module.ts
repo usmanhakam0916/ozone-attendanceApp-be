@@ -20,6 +20,7 @@ import { VersionManager } from '../versionManager/version_manager.entity';
 import { Department } from '../departments/entities/department.entity';
 import { Attendance } from '../attendance/attendance.entity';
 import { Location } from '../location/location.entity';
+import EmailService from '../email/email.service';
 
 // todo: this shouldn't be here
 dotenv.config();
@@ -49,6 +50,7 @@ dotenv.config();
     JwtStrategy,
     UserService,
     EmployeeService,
+    EmailService,
     AdminService,
     VersionManagerService,
   ],

@@ -32,8 +32,14 @@ import { NoAuth } from './no-auth.guard';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MeQueryDto } from './dto/meDto';
+import { ForgetPasswordDto } from './dto/forgetPasswordDto';
+import { hotp as authenticator } from 'otplib';
+import EmailService from '../email/email.service';
+import { AppHelpers } from 'src/helpers/app.helpers';
+import { ResetPasswordDto } from './dto/resetPasswordDto';
 
 dotenv.config();
+const otpCounter = {};
 
 @Controller()
 @ApiTags('Authentication')
@@ -43,6 +49,7 @@ export class AuthController {
     private authService: AuthService,
     private adminService: AdminService,
     private employeeService: EmployeeService,
+    private readonly emailService: EmailService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly http: HttpService,
@@ -260,5 +267,81 @@ export class AuthController {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  @NoAuth()
+  @ApiOperation({ summary: 'Forget Password' })
+  @ApiResponse({ type: Object, status: 200 })
+  @Post('forget-password')
+  @UsePipes(ValidationPipe)
+  public async forgetPassword(@Body() data: ForgetPasswordDto) {
+    const user = await this.userService.getByEmail(data.email);
+    if (!user) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+    const employee = await this.employeeService.findByAuthUserId(user.id);
+    if (!employee) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+
+    if (otpCounter[employee.id.toString()]) {
+      otpCounter[employee.id.toString()] += 1;
+    } else {
+      otpCounter[employee.id.toString()] = 1;
+    }
+
+    const otp = authenticator.generate(
+      employee.id.toString(),
+      otpCounter[employee.id.toString()],
+    );
+
+    this.emailService.sendMail({
+      to: user.email,
+      name: user.username,
+      subject: 'Ozone Reset Password OTP',
+      text: `${otp} is your reset password code.`,
+    });
+
+    return {
+      status: 200,
+      message: `OTP sent to email: ${user.email}`,
+    };
+  }
+
+  @NoAuth()
+  @ApiOperation({ summary: 'Reset Password' })
+  @ApiResponse({ type: Object, status: 200 })
+  @Post('reset-password')
+  @UsePipes(ValidationPipe)
+  public async resetPasswordFlow(@Body() data: ResetPasswordDto) {
+    const user = await this.userService.getByEmail(data.email);
+    if (!user) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+
+    const employee = await this.employeeService.findByAuthUserId(user.id);
+    if (!employee) {
+      throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
+    }
+
+    const isValid = authenticator.check(
+      data.otp,
+      employee.id.toString(),
+      otpCounter[employee.id.toString()],
+    );
+
+    if (isValid) {
+      user.password = await AppHelpers.hashPassword(data.password);
+      employee.authUser.password = await AppHelpers.hashPassword(data.password);
+      await this.userRepo.save(user); // Saving user updates the password
+      // Optionally save employee if needed, but password is usually on user entity
+    } else {
+      throw new HttpException(`Invalid OTP`, HttpStatus.FORBIDDEN);
+    }
+
+    return {
+      status: 200,
+      message: 'Password updated successfully',
+    };
   }
 }
