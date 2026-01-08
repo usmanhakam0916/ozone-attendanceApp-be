@@ -53,6 +53,7 @@ dotenv.config();
     EmailService,
     AdminService,
     VersionManagerService,
+    EmailService,
   ],
   exports: [AuthService],
 })

@@ -47,7 +47,7 @@ const docs = {
     description: 'This is otp',
   },
   password: {
-    required: true,
+    required: false,
     example: 'abc!@#',
     description: 'This is a password',
   },

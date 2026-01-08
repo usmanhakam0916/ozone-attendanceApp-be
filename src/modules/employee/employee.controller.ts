@@ -652,6 +652,10 @@ export class EmployeeController {
       throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
     }
 
+    if (!otpCounter[employee.id.toString()]) {
+      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
+    }
+
     const isValid = authenticator.check(
       data.otp,
       employee.id.toString(),
@@ -749,6 +753,10 @@ export class EmployeeController {
         `User not found against this id: ${data.employeeId}`,
         HttpStatus.NOT_FOUND,
       );
+    }
+
+    if (!otpCounter[data.employeeId.toString()]) {
+      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
     }
 
     const isValid = authenticator.check(

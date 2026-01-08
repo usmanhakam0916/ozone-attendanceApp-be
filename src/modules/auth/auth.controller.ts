@@ -324,24 +324,34 @@ export class AuthController {
       throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
     }
 
+    if (!otpCounter[employee.id.toString()]) {
+      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
+    }
+
     const isValid = authenticator.check(
       data.otp,
       employee.id.toString(),
       otpCounter[employee.id.toString()],
     );
 
-    if (isValid) {
-      user.password = await AppHelpers.hashPassword(data.password);
-      employee.authUser.password = await AppHelpers.hashPassword(data.password);
-      await this.userRepo.save(user); // Saving user updates the password
-      // Optionally save employee if needed, but password is usually on user entity
-    } else {
+    if (!isValid) {
       throw new HttpException(`Invalid OTP`, HttpStatus.FORBIDDEN);
     }
 
+    if (data.password) {
+      user.password = await AppHelpers.hashPassword(data.password);
+      await this.userRepo.save(user); // Saving user updates the password
+      // Optionally save employee if needed, but password is usually on user entity
+      return {
+        status: 200,
+        message: 'Password updated successfully',
+      };
+    }
+
+    // else if passowrd is not sent then only otp is ment to be varified
     return {
       status: 200,
-      message: 'Password updated successfully',
+      message: 'OTP Varified successfully',
     };
   }
 }
