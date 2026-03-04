@@ -73,7 +73,7 @@ export class EmployeeController {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
     private readonly http: HttpService,
-  ) { }
+  ) {}
 
   @ApiOperation({ summary: 'Get all employees' })
   @ApiResponse({ type: Employee, status: 200 })
@@ -129,7 +129,8 @@ export class EmployeeController {
         });
       }
       if (name) {
-        query.andWhere(`"user"."initialData" <> ''`)
+        query
+          .andWhere(`"user"."initialData" <> ''`)
           .andWhere(`"user"."initialData"::text LIKE '{%'`)
           .andWhere(
             `("user"."initialData"::jsonb ->> 'emP_Name' ILIKE :name
@@ -230,7 +231,8 @@ export class EmployeeController {
 
       if (!rawEmp) {
         throw new HttpException(
-          `Batch number not found :${JSON.parse(item.authUser.initialData)['Employee No']
+          `Batch number not found :${
+            JSON.parse(item.authUser.initialData)['Employee No']
           }`,
           HttpStatus.NOT_FOUND,
         );
@@ -313,7 +315,8 @@ export class EmployeeController {
 
       if (!rawEmp) {
         throw new HttpException(
-          `Batch number not found :${JSON.parse(item.authUser.initialData)['Employee No']
+          `Batch number not found :${
+            JSON.parse(item.authUser.initialData)['Employee No']
           }`,
           HttpStatus.NOT_FOUND,
         );
@@ -442,7 +445,6 @@ export class EmployeeController {
         );
       }
 
-
       existingUser = await this.userRepo.findOne({
         where: { email: data.email },
       });
@@ -514,7 +516,6 @@ export class EmployeeController {
       user = await this.userRepo.save(user);
       newEmploye.authUser = user;
       const finalResult = await this.employeeRepo.save(newEmploye);
-
 
       this.resendOtp(user.email);
 
@@ -653,7 +654,10 @@ export class EmployeeController {
     }
 
     if (!otpCounter[employee.id.toString()]) {
-      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Invalid OTP or OTP expired',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const isValid = authenticator.check(
@@ -679,9 +683,7 @@ export class EmployeeController {
   @ApiResponse({ type: Employee, status: 201 })
   @Post('otp/resend/:email')
   @UsePipes(ValidationPipe)
-  public async resendOtp(
-    @Param('email') email: string,
-  ) {
+  public async resendOtp(@Param('email') email: string) {
     const res = await this.userService.getByEmail(email);
     if (!res) {
       throw new HttpException(`User not found.`, HttpStatus.NOT_FOUND);
@@ -701,7 +703,6 @@ export class EmployeeController {
       employee.id.toString(),
       otpCounter[employee.id.toString()],
     );
-
 
     this.emailService.sendMail({
       to: res.email,
@@ -756,7 +757,10 @@ export class EmployeeController {
     }
 
     if (!otpCounter[data.employeeId.toString()]) {
-      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Invalid OTP or OTP expired',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const isValid = authenticator.check(
@@ -778,7 +782,7 @@ export class EmployeeController {
     return employee;
   }
 
-  @ApiOperation({ summary: 'Delete employee, only admin can do it' })
+  @ApiOperation({ summary: 'Delete employee' })
   @ApiResponse({ type: Employee, status: 200 })
   @Delete(':id')
   public async remove(
@@ -789,12 +793,12 @@ export class EmployeeController {
     id: number,
     @Req() req,
   ): Promise<DeleteResult> {
-    if (req.user.type !== userEntity.UserType.ADMIN) {
-      throw new HttpException(
-        `Only admin can use this api`,
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+    // if (req.user.type !== userEntity.UserType.ADMIN) {
+    //   throw new HttpException(
+    //     `Only admin can use this api`,
+    //     HttpStatus.UNAUTHORIZED,
+    //   );
+    // }
 
     const employee = await this.employeeService.findById(id);
 
@@ -803,6 +807,10 @@ export class EmployeeController {
         `Employee does not exist against this id: ${id}`,
         HttpStatus.NOT_FOUND,
       );
+    }
+
+    if (employee.id !== req.user.employeeId) {
+      throw new HttpException(`UNAUTHORIZED`, HttpStatus.BAD_REQUEST);
     }
 
     const authUserId = employee.authUser.id;
@@ -944,12 +952,16 @@ export class EmployeeController {
       const department: Department = await this.departmentRepo.findOne(
         data?.departmentId,
       );
-      initialData.department_Name = department?.name ?? initialData.department_Name;
+      initialData.department_Name =
+        department?.name ?? initialData.department_Name;
       initialData.Department = department?.name ?? initialData.Department;
-      initialData.emP_Name = (`${data.firstName ?? ''} ${data.lastName ?? ''}`.trim()) ?? initialData.emP_Name;
+      initialData.emP_Name =
+        `${data.firstName ?? ''} ${data.lastName ?? ''}`.trim() ??
+        initialData.emP_Name;
       initialData.FirstName = data?.firstName ?? initialData.FirstName;
       initialData.LastName = data?.lastName ?? initialData.LastName;
-      initialData.position_Name = data?.designation ?? initialData.position_Name;
+      initialData.position_Name =
+        data?.designation ?? initialData.position_Name;
       initialData.Position = data?.designation ?? initialData.Position;
       initialData = JSON.stringify(initialData);
       user.initialData = initialData;
