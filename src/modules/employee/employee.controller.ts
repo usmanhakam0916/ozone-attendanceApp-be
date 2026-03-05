@@ -809,9 +809,9 @@ export class EmployeeController {
       );
     }
 
-    if (employee.id !== req.user.employeeId) {
-      throw new HttpException(`UNAUTHORIZED`, HttpStatus.BAD_REQUEST);
-    }
+    // if (employee.id !== req.user.employeeId) {
+    //   throw new HttpException(`UNAUTHORIZED`, HttpStatus.BAD_REQUEST);
+    // }
 
     const authUserId = employee.authUser.id;
 

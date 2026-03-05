@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpService,
   HttpStatus,
+  NotFoundException,
   Patch,
   Post,
   Query,
@@ -24,7 +25,12 @@ import { AdminService } from '../admin/admin.service';
 import { EmployeeService } from '../employee/employee.service';
 import * as dotenv from 'dotenv';
 import { UserService } from '../user/user.service';
-import { User, UserStatus, UserType, validUserStatus } from '../user/user.entity';
+import {
+  User,
+  UserStatus,
+  UserType,
+  validUserStatus,
+} from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/loginDto';
 import { LocalAuthGuard } from './local-auth.guard';
@@ -53,7 +59,7 @@ export class AuthController {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly http: HttpService,
-  ) { }
+  ) {}
 
   @NoAuth()
   @UseGuards(LocalAuthGuard)
@@ -61,8 +67,13 @@ export class AuthController {
   @UsePipes(ValidationPipe)
   @Post('auth/login')
   async login(@Body() data: LoginDto) {
+    console.log('workd.................');
     const user = await this.userService.getByEmail(data.email);
+    if (!user) {
+      throw new NotFoundException('User now found');
+    }
     await this.authService.checkVersion(data);
+
     if (user) {
       // if  device id is null get the device id from params and udpate the record
       if (user.deviceId == null) {
@@ -217,25 +228,36 @@ export class AuthController {
       }
       const currentYear = new Date().getFullYear(); // getMonth() returns 0-11
       if (query.year < 1990 && query.year > currentYear) {
-        throw new HttpException(`Year cannot be greater than ${currentYear} and less than 1990`, HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          `Year cannot be greater than ${currentYear} and less than 1990`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
       if (query.month < 1 && query.month > 12) {
-        throw new HttpException('Month must be between 1 and 12', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Month must be between 1 and 12',
+          HttpStatus.BAD_REQUEST,
+        );
       } else if (query.month > currentMonth) {
-        throw new HttpException('Month cannot be of future', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Month cannot be of future',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       me = await this.employeeService.findByAuthUserId(req.user.id);
       const now = new Date();
-      const sort = me.attendances.filter(x => x.checkInTime) // remove null checkIns
-        .filter(x => {
+      const sort = me.attendances
+        .filter((x) => x.checkInTime) // remove null checkIns
+        .filter((x) => {
           const checkInDate = new Date(x.checkInTime);
           const monthTrue = checkInDate.getMonth() + 1 === Number(query.month);
           const yearTrue = checkInDate.getFullYear() === Number(query.year);
           return monthTrue && yearTrue;
-        }).sort((a, b) => a.id - b.id);
+        })
+        .sort((a, b) => a.id - b.id);
       const last_attendnace = sort[sort.length - 1];
       me['isNightShiftLogin'] = last_attendnace
         ? last_attendnace.isNightShiftLogin
@@ -325,7 +347,10 @@ export class AuthController {
     }
 
     if (!otpCounter[employee.id.toString()]) {
-      throw new HttpException('Invalid OTP or OTP expired', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Invalid OTP or OTP expired',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const isValid = authenticator.check(
