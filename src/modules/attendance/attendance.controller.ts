@@ -42,9 +42,12 @@ import { AppHelpers } from 'src/helpers/app.helpers';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { faceCheckOutDto } from './dto/faceCheckOut.dto';
 import { FaceMatchHelpers } from '../../helpers/faceMatch.helpers';
-import { Request } from 'express'
+import { Request } from 'express';
 import moment = require('moment');
-import { AttendenceTimeType, UpdateAttendenceTimeDto } from './dto/updateAttendentTimeDto';
+import {
+  AttendenceTimeType,
+  UpdateAttendenceTimeDto,
+} from './dto/updateAttendentTimeDto';
 import { UpdateAttendentRequestDto } from './dto/updateAttendentRequestDto';
 
 (moment as any).createFromInputFallback = function (config: any) {
@@ -215,7 +218,6 @@ export class AttendanceController {
       .take(take)
       .getManyAndCount();
 
-
     return { result, total };
   }
 
@@ -300,7 +302,7 @@ export class AttendanceController {
     checkoutTime = body.currentTime ? body.currentTime : checkoutTime;
     if (process.env.IS_SYNC === 'true' && employee.authUser.isActiveDirectory) {
       const Shift = getShift(employee, existingAttendance);
-      let params = {
+      const params = {
         Shift: `S${Shift}`,
         AttendanceId: parseInt(employee.checkInRowId),
         EmpNo: parseInt(employee.authUser.username),
@@ -361,9 +363,12 @@ export class AttendanceController {
         uploadedImage.Key,
       );
       if (does_face_match) {
-        if (process.env.IS_SYNC === 'true' && employee.authUser.isActiveDirectory) {
+        if (
+          process.env.IS_SYNC === 'true' &&
+          employee.authUser.isActiveDirectory
+        ) {
           const Shift = getShift(employee, existingAttendance);
-          let params = {
+          const params = {
             Shift: `S${Shift}`,
             AttendanceId: parseInt(employee.checkInRowId),
             EmpNo: parseInt(employee.authUser.username),
@@ -544,6 +549,7 @@ export class AttendanceController {
       ? data.locationId
       : [data.locationId];
     const allLocations = await this.locationService.findByIds(location_ids);
+    // eslint-disable-next-line no-var
     var location: any = allLocations.filter(
       (location) => location.qrCode === data.qrCode,
     );
@@ -571,7 +577,10 @@ export class AttendanceController {
   @Patch('/update/attendence/request')
   @UsePipes(ValidationPipe)
   public async UpdateAttendenceRequest(@Body() data: UpdateAttendenceTimeDto) {
-    const targetAttendance = await this.attendanceRepo.findOne({ where: { id: data.attendanceId }, relations: ['employee'] });
+    const targetAttendance = await this.attendanceRepo.findOne({
+      where: { id: data.attendanceId },
+      relations: ['employee'],
+    });
     if (!targetAttendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${data.attendanceId}`,
@@ -586,35 +595,47 @@ export class AttendanceController {
       );
     }
 
-    if (data.attendenceTimeType === AttendenceTimeType.CHECKIN && !targetAttendance.checkInTime) {
-      throw new HttpException(
-        `Checkin in first.`,
-        HttpStatus.BAD_REQUEST,
-      );
-    } else if (data.attendenceTimeType === AttendenceTimeType.CHECKOUT && !targetAttendance.checkoutTime) {
-      throw new HttpException(
-        `Checkout out first.`,
-        HttpStatus.BAD_REQUEST,
-      );
+    if (
+      data.attendenceTimeType === AttendenceTimeType.CHECKIN &&
+      !targetAttendance.checkInTime
+    ) {
+      throw new HttpException(`Checkin in first.`, HttpStatus.BAD_REQUEST);
+    } else if (
+      data.attendenceTimeType === AttendenceTimeType.CHECKOUT &&
+      !targetAttendance.checkoutTime
+    ) {
+      throw new HttpException(`Checkout out first.`, HttpStatus.BAD_REQUEST);
     }
 
-    const targetDate = new Date(targetAttendance.checkInTime).toISOString().split('T')[0];
-    let attendances = await this.attendanceRepo
+    const targetDate = new Date(targetAttendance.checkInTime)
+      .toISOString()
+      .split('T')[0];
+    const attendances = await this.attendanceRepo
       .createQueryBuilder('attendance')
-      .where('attendance.employeeId = :empId', { empId: targetAttendance.employee.id })
+      .where('attendance.employeeId = :empId', {
+        empId: targetAttendance.employee.id,
+      })
       .andWhere('DATE(attendance.checkInTime) = :date', { date: targetDate })
       .getMany();
     const params = { time: [data.hour, data.minute] };
 
     if (data.attendenceTimeType === AttendenceTimeType.CHECKIN) {
       if (attendances.length > 1) {
-        attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
-        const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+        attendances.sort(
+          (a: any, b: any) =>
+            new Date(a.checkInTime).getTime() -
+            new Date(b.checkInTime).getTime(),
+        );
+        const targetAttendanceIndex = attendances.findIndex(
+          (x: any) => x.id === targetAttendance.id,
+        );
         const prevAttendance = attendances[targetAttendanceIndex - 1] ?? null;
 
         if (prevAttendance && prevAttendance.checkoutTime) {
           const prevCheckout = new Date(prevAttendance.checkoutTime);
-          const newCheckIn = new Date(setDateTime(targetAttendance.checkInTime, params));
+          const newCheckIn = new Date(
+            setDateTime(targetAttendance.checkInTime, params),
+          );
 
           if (prevCheckout.getTime() >= newCheckIn.getTime()) {
             throw new HttpException(
@@ -627,13 +648,21 @@ export class AttendanceController {
     } else {
       //data.attendenceTimeType === AttendenceTimeType.CHECKOUT
       if (attendances.length > 1) {
-        attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
-        const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+        attendances.sort(
+          (a: any, b: any) =>
+            new Date(a.checkInTime).getTime() -
+            new Date(b.checkInTime).getTime(),
+        );
+        const targetAttendanceIndex = attendances.findIndex(
+          (x: any) => x.id === targetAttendance.id,
+        );
         const nextAttendance = attendances[targetAttendanceIndex + 1] ?? null;
 
         if (nextAttendance && nextAttendance.checkInTime) {
           const nextCheckIn = new Date(nextAttendance.checkInTime);
-          const newCheckOut = new Date(setDateTime(targetAttendance.checkInTime, params));
+          const newCheckOut = new Date(
+            setDateTime(targetAttendance.checkInTime, params),
+          );
 
           if (nextCheckIn.getTime() <= newCheckOut.getTime()) {
             throw new HttpException(
@@ -645,22 +674,30 @@ export class AttendanceController {
       }
     }
 
-    targetAttendance.updateRequestStatus = data.attendenceTimeType === AttendenceTimeType.CHECKIN ? UpdateRequestStatus.CHECKIN_REQUESTED : UpdateRequestStatus.CHECKOUT_REQUESTED;
+    targetAttendance.updateRequestStatus =
+      data.attendenceTimeType === AttendenceTimeType.CHECKIN
+        ? UpdateRequestStatus.CHECKIN_REQUESTED
+        : UpdateRequestStatus.CHECKOUT_REQUESTED;
     targetAttendance.updateRequestData = {
       attendenceTimeType: data.attendenceTimeType,
       time: [data.hour, data.minute],
       comment: data.comment,
-    }
+    };
 
     const updatedAttendance = await this.attendanceRepo.save(targetAttendance);
     return updatedAttendance;
   }
 
-  @ApiOperation({ summary: 'update Attendance request check-in or checkout-time' })
+  @ApiOperation({
+    summary: 'update Attendance request check-in or checkout-time',
+  })
   @ApiResponse({ type: Attendance, status: 201 })
   @Patch('/process/update/attendence/request')
   @UsePipes(ValidationPipe)
-  public async ProcessUpdateAttendenceRequest(@Body() data: UpdateAttendentRequestDto, @Req() req) {
+  public async ProcessUpdateAttendenceRequest(
+    @Body() data: UpdateAttendentRequestDto,
+    @Req() req,
+  ) {
     if (req.user.type === UserType.EMPLOYEE) {
       throw new HttpException(
         'Only Admin can update their attendance time',
@@ -668,7 +705,10 @@ export class AttendanceController {
       );
     }
 
-    const targetAttendance = await this.attendanceRepo.findOne({ where: { id: data.attendanceId }, relations: ['employee'] });
+    const targetAttendance = await this.attendanceRepo.findOne({
+      where: { id: data.attendanceId },
+      relations: ['employee'],
+    });
     if (!targetAttendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${data.attendanceId}`,
@@ -676,26 +716,40 @@ export class AttendanceController {
       );
     }
 
-
     if (data.approved) {
       // update the time
-      const targetDate = new Date(targetAttendance.checkInTime).toISOString().split('T')[0];
-      let attendances = await this.attendanceRepo
+      const targetDate = new Date(targetAttendance.checkInTime)
+        .toISOString()
+        .split('T')[0];
+      const attendances = await this.attendanceRepo
         .createQueryBuilder('attendance')
-        .where('attendance.employeeId = :empId', { empId: targetAttendance.employee.id })
+        .where('attendance.employeeId = :empId', {
+          empId: targetAttendance.employee.id,
+        })
         .andWhere('DATE(attendance.checkInTime) = :date', { date: targetDate })
         .getMany();
       const params = { time: [data.hour, data.minute] };
 
-      if (targetAttendance.updateRequestData.attendenceTimeType === AttendenceTimeType.CHECKIN) {
+      if (
+        targetAttendance.updateRequestData.attendenceTimeType ===
+        AttendenceTimeType.CHECKIN
+      ) {
         if (attendances.length > 1) {
-          attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
-          const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+          attendances.sort(
+            (a: any, b: any) =>
+              new Date(a.checkInTime).getTime() -
+              new Date(b.checkInTime).getTime(),
+          );
+          const targetAttendanceIndex = attendances.findIndex(
+            (x: any) => x.id === targetAttendance.id,
+          );
           const prevAttendance = attendances[targetAttendanceIndex - 1] ?? null;
 
           if (prevAttendance && prevAttendance.checkoutTime) {
             const prevCheckout = new Date(prevAttendance.checkoutTime);
-            const newCheckIn = new Date(setDateTime(targetAttendance.checkInTime, params));
+            const newCheckIn = new Date(
+              setDateTime(targetAttendance.checkInTime, params),
+            );
 
             if (prevCheckout.getTime() >= newCheckIn.getTime()) {
               throw new HttpException(
@@ -706,16 +760,27 @@ export class AttendanceController {
           }
         }
 
-        targetAttendance.checkInTime = setDateTime(targetAttendance.checkInTime, params);
+        targetAttendance.checkInTime = setDateTime(
+          targetAttendance.checkInTime,
+          params,
+        );
       } else {
         if (attendances.length > 1) {
-          attendances.sort((a: any, b: any) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
-          const targetAttendanceIndex = attendances.findIndex((x: any) => x.id === targetAttendance.id);
+          attendances.sort(
+            (a: any, b: any) =>
+              new Date(a.checkInTime).getTime() -
+              new Date(b.checkInTime).getTime(),
+          );
+          const targetAttendanceIndex = attendances.findIndex(
+            (x: any) => x.id === targetAttendance.id,
+          );
           const nextAttendance = attendances[targetAttendanceIndex + 1] ?? null;
 
           if (nextAttendance && nextAttendance.checkInTime) {
             const nextCheckIn = new Date(nextAttendance.checkInTime);
-            const newCheckOut = new Date(setDateTime(targetAttendance.checkInTime, params));
+            const newCheckOut = new Date(
+              setDateTime(targetAttendance.checkInTime, params),
+            );
 
             if (nextCheckIn.getTime() <= newCheckOut.getTime()) {
               throw new HttpException(
@@ -726,10 +791,13 @@ export class AttendanceController {
           }
         }
 
-        targetAttendance.checkoutTime = setDateTime(targetAttendance.checkoutTime, params);
+        targetAttendance.checkoutTime = setDateTime(
+          targetAttendance.checkoutTime,
+          params,
+        );
       }
     }
-    // just update the status if admin rejects the request 
+    // just update the status if admin rejects the request
     targetAttendance.updateRequestStatus = UpdateRequestStatus.NONE;
     targetAttendance.updateRequestData = null;
 
@@ -748,20 +816,45 @@ export class AttendanceController {
 
     const todaysAttendances = getTodaysAttendances(employee);
     // Sort by checkInTime descending to get the latest
-    todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
+    todaysAttendances.sort(
+      (a, b) =>
+        new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime(),
+    );
 
-    if (employee.attendanceType == AttendanceType.SINGLE && todaysAttendances.length === 1) {
-      throw new HttpException('Can only checkin once in a day.', HttpStatus.BAD_REQUEST);
-    } else if (employee.attendanceType == AttendanceType.DOUBLE && todaysAttendances.length === 2) {
-      throw new HttpException('Can only checkout twice a day. ', HttpStatus.BAD_REQUEST);
-    }// else case is for multiple checkin checkout so no need to check
+    if (
+      employee.attendanceType == AttendanceType.SINGLE &&
+      todaysAttendances.length === 1
+    ) {
+      throw new HttpException(
+        'Can only checkin once in a day.',
+        HttpStatus.BAD_REQUEST,
+      );
+    } else if (
+      employee.attendanceType == AttendanceType.DOUBLE &&
+      todaysAttendances.length === 2
+    ) {
+      throw new HttpException(
+        'Can only checkout twice a day. ',
+        HttpStatus.BAD_REQUEST,
+      );
+    } // else case is for multiple checkin checkout so no need to check
 
     const latestAttendance = todaysAttendances[0];
-    if (latestAttendance && latestAttendance.checkInTime && !latestAttendance.checkoutTime) {
-      throw new HttpException('You have already checked in. Please checkout first.', HttpStatus.BAD_REQUEST);
+    if (
+      latestAttendance &&
+      latestAttendance.checkInTime &&
+      !latestAttendance.checkoutTime
+    ) {
+      throw new HttpException(
+        'You have already checked in. Please checkout first.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const location = employee.locations && employee.locations.length > 0 ? employee.locations[0] : null;
+    const location =
+      employee.locations && employee.locations.length > 0
+        ? employee.locations[0]
+        : null;
 
     const data = {
       employeeId: employee.id,
@@ -777,7 +870,10 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Simple Check-out' })
   @ApiResponse({ type: Attendance, status: 200 })
   @Patch('checkout/:deviceId')
-  public async simpleCheckout(@Req() req: any, @Param('deviceId') deviceId: string) {
+  public async simpleCheckout(
+    @Req() req: any,
+    @Param('deviceId') deviceId: string,
+  ) {
     const employee = await this.employeeService.findByAuthUserId(req.user.id);
     if (!employee) {
       throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
@@ -785,16 +881,28 @@ export class AttendanceController {
 
     const todaysAttendances = getTodaysAttendances(employee);
     // Sort by checkInTime descending to get the latest
-    todaysAttendances.sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime());
+    todaysAttendances.sort(
+      (a, b) =>
+        new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime(),
+    );
     const latestAttendance = todaysAttendances[0];
     if (latestAttendance.checkoutTime) {
-      throw new HttpException('You have already checked out', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'You have already checked out',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (!latestAttendance) {
-      throw new HttpException('No active check-in found to check out', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'No active check-in found to check out',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (latestAttendance.checkinDeviceId !== deviceId) {
-      throw new HttpException('Device id does not match', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Device id does not match',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     latestAttendance.checkoutTime = AppHelpers.getCurrentDateTime();
@@ -906,7 +1014,8 @@ function formatHoursToHMS(decimalHours: number): string {
 
 async function generate_csv(data: any) {
   const currentTime = new Date();
-  const beforeMidnight = currentTime.getHours() === 0 && currentTime.getMinutes() === 0;
+  const beforeMidnight =
+    currentTime.getHours() === 0 && currentTime.getMinutes() === 0;
   const EXPECTED_HOURS = 8;
 
   let underTime = '';
@@ -918,11 +1027,15 @@ async function generate_csv(data: any) {
       ? JSON.parse(item?.employee?.authUser?.initialData)
       : {};
 
-    if ((item.checkInTime && beforeMidnight) || (item.checkInTime && item.checkoutTime)) {
+    if (
+      (item.checkInTime && beforeMidnight) ||
+      (item.checkInTime && item.checkoutTime)
+    ) {
       const checkIn = new Date(item.checkInTime);
       const checkOut = new Date(item.checkoutTime);
 
-      const workedMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60); // minutes
+      const workedMinutes =
+        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60); // minutes
       const expectedMinutes = EXPECTED_HOURS * 60;
 
       overTime = '';
@@ -938,11 +1051,20 @@ async function generate_csv(data: any) {
     items.push({
       'Attendance Id': item.id,
       'Employee No': item.employee.id ?? '',
-      'Employee Name': `${initialData['FirstName']} ${initialData['LastName']}` || '',
+      'Employee Name':
+        `${initialData['FirstName']} ${initialData['LastName']}` || '',
       'Check-in Time': item.checkInTime ?? 'No Check-in',
-      'CheckOut Time': item.checkInTime ? (item.checkoutTime ? item.checkoutTime : 'No Checkout') : 'No Checkout',
+      'CheckOut Time': item.checkInTime
+        ? item.checkoutTime
+          ? item.checkoutTime
+          : 'No Checkout'
+        : 'No Checkout',
       'Check-in Location': item.checkInTime ? item.location.name : '-',
-      'CheckOut Location': item.checkInTime ? (item.checkoutTime ? item.location.name : '-') : '-',
+      'CheckOut Location': item.checkInTime
+        ? item.checkoutTime
+          ? item.location.name
+          : '-'
+        : '-',
       'Under Time (min)': underTime,
       'Over Time (min)': overTime,
     });
@@ -950,9 +1072,9 @@ async function generate_csv(data: any) {
   const loopIteration = Math.ceil(items.length / 50000);
   const file_name = `${new Date().getTime()}.csv`;
   for (const index of Array.from({ length: loopIteration }, (v, i) => i)) {
-    let start = index == 0 ? 0 : index * 50000 + 1;
-    let end = (index + 1) * 50000;
-    let item = items.slice(start, end);
+    const start = index == 0 ? 0 : index * 50000 + 1;
+    const end = (index + 1) * 50000;
+    const item = items.slice(start, end);
     if (index == 0) {
       await new ObjectsToCsv(item).toDisk(`./public/${file_name}`);
     } else {

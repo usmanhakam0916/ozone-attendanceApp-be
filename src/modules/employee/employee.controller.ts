@@ -73,7 +73,7 @@ export class EmployeeController {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
     private readonly http: HttpService,
-  ) {}
+  ) { }
 
   @ApiOperation({ summary: 'Get all employees' })
   @ApiResponse({ type: Employee, status: 200 })
@@ -231,8 +231,7 @@ export class EmployeeController {
 
       if (!rawEmp) {
         throw new HttpException(
-          `Batch number not found :${
-            JSON.parse(item.authUser.initialData)['Employee No']
+          `Batch number not found :${JSON.parse(item.authUser.initialData)['Employee No']
           }`,
           HttpStatus.NOT_FOUND,
         );
@@ -315,8 +314,7 @@ export class EmployeeController {
 
       if (!rawEmp) {
         throw new HttpException(
-          `Batch number not found :${
-            JSON.parse(item.authUser.initialData)['Employee No']
+          `Batch number not found :${JSON.parse(item.authUser.initialData)['Employee No']
           }`,
           HttpStatus.NOT_FOUND,
         );
@@ -495,9 +493,10 @@ export class EmployeeController {
         newEmploye.locations = locations;
       }
 
-      const department: Department = await this.departmentRepo.findOne(
-        data?.departmentId,
-      );
+      let department: Department | null = null;
+      if (data?.departmentId) {
+        department = await this.departmentRepo.findOne(data?.departmentId);
+      }
 
       let initialData;
       initialData = {
