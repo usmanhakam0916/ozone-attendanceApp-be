@@ -196,7 +196,7 @@ export class AuthController {
       if (user.status === UserStatus.HOLD) {
         throw new HttpException(
           {
-            message: `The employee is currently on hold due to pending account verification. Please coordinate with HR/Admin to proceed further.`,
+            message: `The employee is currently on hold due to pending account verification. Please coordinate with HR/Admin/IT to proceed further. Contact: 00966 598559946`,
             status: user.status,
           },
           HttpStatus.UNAUTHORIZED,

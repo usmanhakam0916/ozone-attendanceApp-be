@@ -3,7 +3,6 @@
 /node_modules
 
 /public
-.env
 .env.sample
 
 # Logs
@@ -35,3 +34,4 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+config.bat
