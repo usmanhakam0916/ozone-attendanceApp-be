@@ -59,7 +59,7 @@ export class AuthController {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly http: HttpService,
-  ) {}
+  ) { }
 
   @NoAuth()
   @UseGuards(LocalAuthGuard)
@@ -196,7 +196,7 @@ export class AuthController {
       if (user.status === UserStatus.HOLD) {
         throw new HttpException(
           {
-            message: `The employee is currently on hold due to pending account verification; please coordinate with HR/Admin to proceed further.`,
+            message: `The employee is currently on hold due to pending account verification. Please coordinate with HR/Admin to proceed further.`,
             status: user.status,
           },
           HttpStatus.UNAUTHORIZED,
