@@ -30,7 +30,7 @@ export class EmployeeService {
   ) { }
 
   async findById(id: number): Promise<Employee> {
-    return this.employeeRepo.findOne(id);
+    return this.employeeRepo.findOne({ where: { id } });
   }
 
   async findByDeviceId(deviceId: string) {
@@ -65,25 +65,25 @@ export class EmployeeService {
 
   getEmployeeByBatchNo = async (batchNo) => {
     const authUser = await this.userRepo.findOne({
-      username: batchNo.toString(),
+      where: { username: batchNo.toString() },
     });
 
-    return this.employeeRepo.findOne({ authUser });
+    return this.employeeRepo.findOne({ where: { authUser } });
   };
 
   findByAuthUserId = async (id) => {
     const authUser = await this.userRepo.findOne({
-      id,
+      where: { id },
     });
     const result = await this.employeeRepo.findOne({
       where: { authUserId: authUser.id },
-      relations: ['locations'],
+      relations: { locations: true },
     }); return result;
   };
 
   searchEmployees = async (query) => {
     const users = await this.userRepo.find({
-      username: Like(`${query.query}%`),
+      where: { username: Like(`${query.query}%`) },
     });
     let employees = [];
     if (users.length > 0) {

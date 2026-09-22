@@ -16,8 +16,8 @@ export class DeviceIdTrackingService {
 
   async create(body: CreateDeviceIdTrackingDto) {
     try {
-      const user = await this.userRepo.findOne(body?.amendForId)
-      const amendBy = await this.userRepo.findOne(body?.amendById)
+      const user = await this.userRepo.findOne({ where: { id: body?.amendForId } })
+      const amendBy = await this.userRepo.findOne({ where: { id: body?.amendById } })
       const deviceIdTracking = new DeviceIdTracking()
       deviceIdTracking.deviceId = body.deviceId
       deviceIdTracking.user = user

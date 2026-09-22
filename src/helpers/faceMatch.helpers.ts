@@ -1,16 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import * as AWS from 'aws-sdk';
+import {
+  CompareFacesCommand,
+  RekognitionClient,
+} from '@aws-sdk/client-rekognition';
 const AWS_BUCKET = process.env.AWS_PUBLIC_BUCKET_NAME;
 
 @Injectable()
 class FaceMatchHelpers {
   static async compareFaces(source_image, destination_image) {
     try {
-      new AWS.Config({
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      });
-      AWS.config.update({ region: process.env.AWS_REIGION });
+      // NOTE: v2 constructed an AWS.Config here and discarded it (a no-op);
+      // credentials resolve from the default environment chain in both SDKs.
       const compareObject = {
         SourceImage: {
           S3Object: {
@@ -26,7 +26,9 @@ class FaceMatchHelpers {
         },
         SimilarityThreshold: 70,
       };
-      const client = new AWS.Rekognition();
+      const client = new RekognitionClient({
+        region: process.env.AWS_REIGION,
+      });
       const does_face_match = await compareFacesPromise(client, compareObject);
       return does_face_match;
     } catch (error) {
@@ -37,11 +39,10 @@ class FaceMatchHelpers {
 
 const compareFacesPromise = (client, params) => {
   return new Promise((resolve, reject) => {
-    client.compareFaces(params, function (err, response) {
-      if (err) {
-        reject({ message: 'Face does not match' });
-      } else {
-        if (response.FaceMatches.length == 0) {
+    client
+      .send(new CompareFacesCommand(params))
+      .then((response) => {
+        if (!response.FaceMatches || response.FaceMatches.length == 0) {
           reject({ message: 'Face does not match' });
         } else {
           response.FaceMatches.forEach((data) => {
@@ -57,8 +58,10 @@ const compareFacesPromise = (client, params) => {
             }
           });
         }
-      }
-    });
+      })
+      .catch(() => {
+        reject({ message: 'Face does not match' });
+      });
   });
 };
 

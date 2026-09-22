@@ -1,7 +1,7 @@
 import moment = require('moment');
 const ZERO_DATE = '0001-01-01T09:00:00.000Z';
 import path from 'path';
-import Jimp from 'jimp';
+import { Jimp } from 'jimp';
 import * as bcrypt from 'bcrypt';
 
 class AppHelpers {
@@ -27,7 +27,7 @@ class AppHelpers {
       `../../public/uploads/${new Date().getTime()}_response.png`,
     );
     const image = await Jimp.read(img_path);
-    image.write(response_path);
+    await image.write(response_path as `${string}.png`);
     return response_path;
   }
 

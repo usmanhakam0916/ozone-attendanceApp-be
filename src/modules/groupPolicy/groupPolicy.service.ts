@@ -12,8 +12,9 @@ export class GroupPolicyService {
   ) { }
 
   async findById(id: number): Promise<GroupPolicy> {
-    return this.groupPolicyRepo.findOne(id, {
-      relations: ['employees'],
+    return this.groupPolicyRepo.findOne({
+      where: { id },
+      relations: { employees: true },
     });
   }
 }

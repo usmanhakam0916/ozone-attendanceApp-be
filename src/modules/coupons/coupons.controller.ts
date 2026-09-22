@@ -30,7 +30,7 @@ export class CouponsController {
   @ApiResponse({ type: Coupons, status: 200 })
   @Post()
   public async getCoupon(@Body() data: UpdateCouponDto) {
-    const coupon = await this.couponsRepo.findOne({ used: false });
+    const coupon = await this.couponsRepo.findOne({ where: { used: false } });
     if (!coupon) {
       throw new HttpException(
         `coupon with false used value does not exist`,

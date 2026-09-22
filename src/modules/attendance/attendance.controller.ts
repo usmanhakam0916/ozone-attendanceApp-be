@@ -1,3 +1,4 @@
+/// <reference types="multer" />
 import {
   Body,
   Controller,
@@ -14,7 +15,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { getRepository, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -34,7 +35,37 @@ import {
 } from './dto/createAttendanceDto';
 import { FileService } from '../file/file.service';
 import { EmployeeService } from '../employee/employee.service';
-const ObjectsToCsv = require('objects-to-csv');
+import { stringify as csvStringify } from 'csv-stringify/sync';
+import * as fs from 'fs';
+
+/**
+ * Drop-in replacement for the previous objects-to-csv call:
+ *   new <lib>(rows).toDisk(filename, { append })
+ * Mirrors the original behaviour exactly - columns come from the first row,
+ * and the header is written only when the file is new/empty or not appending.
+ */
+async function writeObjectsToCsv(
+  filename: string,
+  rows: any[],
+  append = false,
+): Promise<void> {
+  const fileNotExists =
+    !fs.existsSync(filename) || fs.statSync(filename).size === 0;
+  const addHeader = fileNotExists || !append;
+
+  let data = '';
+  if (rows.length > 0) {
+    const columnNames = Object.keys(rows[0]);
+    const records = rows.map((row) => columnNames.map((c) => row[c]));
+    data = csvStringify(addHeader ? [columnNames, ...records] : records);
+  }
+
+  if (append) {
+    await fs.promises.appendFile(filename, data, 'utf8');
+  } else {
+    await fs.promises.writeFile(filename, data, 'utf8');
+  }
+}
 import { LocationService } from '../location/location.service';
 import { AttendanceType } from '../employee/employee.entity';
 import { UserType } from '../user/user.entity';
@@ -79,7 +110,7 @@ export class AttendanceController {
   @ApiResponse({ type: Attendance, status: 200 })
   @Get()
   findAll(): Promise<Attendance[]> {
-    return this.attendanceRepo.find({ isArchived: false });
+    return this.attendanceRepo.find({ where: { isArchived: false } });
   }
 
   @ApiOperation({ summary: 'Get all attendances' })
@@ -126,7 +157,7 @@ export class AttendanceController {
     try {
       const { badgeNo, departmentId } = req.query;
 
-      const qb = getRepository(Attendance)
+      const qb = this.attendanceRepo
         .createQueryBuilder('Attendance')
         .where('Attendance.isArchived = false')
         .leftJoin('Attendance.employee', 'employee')
@@ -180,7 +211,7 @@ export class AttendanceController {
       );
     }
     const { badgeNo, departmentId } = req.query;
-    const qb = getRepository(Attendance)
+    const qb = this.attendanceRepo
       .createQueryBuilder('attendance')
       .where('attendance.isArchived = false')
       .leftJoinAndSelect('attendance.employee', 'employee')
@@ -238,7 +269,7 @@ export class AttendanceController {
         HttpStatus.NOT_FOUND,
       );
     }
-    return getRepository(Attendance)
+    return this.attendanceRepo
       .createQueryBuilder('Attendance')
       .leftJoinAndSelect('Attendance.location', 'location')
       .where('Attendance.employeeId = :employeeId', { employeeId: id })
@@ -255,7 +286,7 @@ export class AttendanceController {
     )
     id: number,
   ): Promise<Attendance> {
-    const attendance = await this.attendanceRepo.findOne({ id });
+    const attendance = await this.attendanceRepo.findOne({ where: { id } });
     if (!attendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${id}`,
@@ -290,7 +321,7 @@ export class AttendanceController {
     @Req() req: any,
   ): Promise<Attendance> {
     const employee = await this.employeeService.findByAuthUserId(req.user.id);
-    const existingAttendance = await this.attendanceRepo.findOne({ id });
+    const existingAttendance = await this.attendanceRepo.findOne({ where: { id } });
     //const todaysAttendances = getTodaysAttendances(employee, body.currentTime);
 
     const location = await this.attendanceService.checkoutLogic(
@@ -346,7 +377,7 @@ export class AttendanceController {
   ): Promise<Attendance> {
     try {
       const employee = await this.employeeService.findByAuthUserId(req.user.id);
-      const existingAttendance = await this.attendanceRepo.findOne({ id });
+      const existingAttendance = await this.attendanceRepo.findOne({ where: { id } });
       const location = await this.attendanceService.checkoutLogic(
         existingAttendance,
         employee,
@@ -466,10 +497,10 @@ export class AttendanceController {
       );
     }
 
-    const existingAttendance = await this.attendanceRepo.findOne(
-      { id },
-      { relations: ['employee'] },
-    );
+    const existingAttendance = await this.attendanceRepo.findOne({
+      where: { id },
+      relations: { employee: true },
+    });
     if (!existingAttendance) {
       throw new HttpException(
         `Attendance does not exist against this id :${id}`,
@@ -579,7 +610,7 @@ export class AttendanceController {
   public async UpdateAttendenceRequest(@Body() data: UpdateAttendenceTimeDto) {
     const targetAttendance = await this.attendanceRepo.findOne({
       where: { id: data.attendanceId },
-      relations: ['employee'],
+      relations: { employee: true },
     });
     if (!targetAttendance) {
       throw new HttpException(
@@ -707,7 +738,7 @@ export class AttendanceController {
 
     const targetAttendance = await this.attendanceRepo.findOne({
       where: { id: data.attendanceId },
-      relations: ['employee'],
+      relations: { employee: true },
     });
     if (!targetAttendance) {
       throw new HttpException(
@@ -1076,11 +1107,9 @@ async function generate_csv(data: any) {
     const end = (index + 1) * 50000;
     const item = items.slice(start, end);
     if (index == 0) {
-      await new ObjectsToCsv(item).toDisk(`./public/${file_name}`);
+      await writeObjectsToCsv(`./public/${file_name}`, item);
     } else {
-      await new ObjectsToCsv(item).toDisk(`./public/${file_name}`, {
-        append: true,
-      });
+      await writeObjectsToCsv(`./public/${file_name}`, item, true);
     }
   }
 

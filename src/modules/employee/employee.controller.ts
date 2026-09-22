@@ -11,18 +11,18 @@ import {
   Post,
   UsePipes,
   ValidationPipe,
-  HttpService,
   Req,
 } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { hotp as authenticator } from 'otplib';
-import { DeleteResult, Repository, getConnection, getManager } from 'typeorm';
+import { DataSource, DeleteResult, Repository } from 'typeorm';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { AttendanceType, Employee } from './employee.entity';
 import { EmployeeService } from './employee.service';
@@ -73,6 +73,8 @@ export class EmployeeController {
     @InjectRepository(Employee)
     private readonly employeeRepo: Repository<Employee>,
     private readonly http: HttpService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) { }
 
   @ApiOperation({ summary: 'Get all employees' })
@@ -201,7 +203,7 @@ export class EmployeeController {
       } as userEntity.User),
     );
 
-    const dbUsers = await getConnection()
+    const dbUsers = await this.dataSource
       .createQueryBuilder()
       .insert()
       .into(userEntity.User)
@@ -215,7 +217,7 @@ export class EmployeeController {
       }),
     );
 
-    await getConnection()
+    await this.dataSource
       .createQueryBuilder()
       .insert()
       .into(Employee)
@@ -263,7 +265,7 @@ export class EmployeeController {
       qrCode: item.qrCode,
     }));
 
-    await getConnection()
+    await this.dataSource
       .createQueryBuilder()
       .insert()
       .into(Location)
@@ -281,7 +283,7 @@ export class EmployeeController {
       } as userEntity.User),
     );
 
-    const dbUsers = await getConnection()
+    const dbUsers = await this.dataSource
       .createQueryBuilder()
       .insert()
       .into(userEntity.User)
@@ -295,7 +297,7 @@ export class EmployeeController {
       }),
     );
 
-    await getConnection()
+    await this.dataSource
       .createQueryBuilder()
       .insert()
       .into(Employee)
@@ -336,7 +338,7 @@ export class EmployeeController {
       });
     });
 
-    await getConnection()
+    await this.dataSource
       .createQueryBuilder()
       .insert()
       .into('employee_locations_location')
@@ -358,7 +360,7 @@ export class EmployeeController {
       throw new HttpException(`Unauthorized`, HttpStatus.UNAUTHORIZED);
     }
 
-    const entityManager = getManager();
+    const entityManager = this.dataSource.manager;
     entityManager.query(
       `
       TRUNCATE TABLE "admin" CASCADE;
@@ -495,7 +497,9 @@ export class EmployeeController {
 
       let department: Department | null = null;
       if (data?.departmentId) {
-        department = await this.departmentRepo.findOne(data?.departmentId);
+        department = await this.departmentRepo.findOne({
+          where: { id: data?.departmentId },
+        });
       }
 
       let initialData;
@@ -581,9 +585,9 @@ export class EmployeeController {
         const locations = await this.locationService.findByIds(data.locations);
         newEmploye.locations = locations;
       }
-      const department: Department = await this.departmentRepo.findOne(
-        data?.departmentId,
-      );
+      const department: Department = await this.departmentRepo.findOne({
+        where: { id: data?.departmentId },
+      });
       initialData = {
         department_Name: department.name,
         Department: department.name,
@@ -666,7 +670,7 @@ export class EmployeeController {
     );
 
     if (isValid) {
-      const user = await this.userRepo.findOne({ id: employee.authUser.id });
+      const user = await this.userRepo.findOne({ where: { id: employee.authUser.id } });
       user.status = userEntity.UserStatus.ACTIVE;
       employee.authUser.status = userEntity.UserStatus.ACTIVE;
       await this.userRepo.save(user);
@@ -730,7 +734,7 @@ export class EmployeeController {
 
     const employee = await this.employeeService.findById(data.employeeId);
 
-    const user = await this.userRepo.findOne({ id: employee.authUser.id });
+    const user = await this.userRepo.findOne({ where: { id: employee.authUser.id } });
     user.status = userEntity.UserStatus.ACTIVE;
     user.password = await AppHelpers.hashPassword(data.password);
     employee.authUser.status = userEntity.UserStatus.ACTIVE;
@@ -770,7 +774,7 @@ export class EmployeeController {
 
     if (isValid) {
       // todo: password should be encrypted
-      const user = await this.userRepo.findOne({ id: employee.authUser.id });
+      const user = await this.userRepo.findOne({ where: { id: employee.authUser.id } });
       user.password = await AppHelpers.hashPassword(data.password);
       employee.authUser.password = await AppHelpers.hashPassword(data.password);
       await this.userRepo.save(user);
@@ -851,7 +855,7 @@ export class EmployeeController {
     )
     id: number,
   ): Promise<Employee> {
-    const existingEmployee = await this.employeeRepo.findOne({ id });
+    const existingEmployee = await this.employeeRepo.findOne({ where: { id } });
     //await existingEmployee.avatar;
     if (!existingEmployee) {
       throw new HttpException(
@@ -892,7 +896,7 @@ export class EmployeeController {
     )
     id: number,
   ): Promise<Employee> {
-    const existingEmployee = await this.employeeRepo.findOne({ id });
+    const existingEmployee = await this.employeeRepo.findOne({ where: { id } });
     if (!existingEmployee) {
       throw new HttpException(
         `Employee does not exist against this id :${id}`,
@@ -948,9 +952,9 @@ export class EmployeeController {
       existingEmployee.locations = locations;
     }
     if (!data?.authUser?.password) {
-      const department: Department = await this.departmentRepo.findOne(
-        data?.departmentId,
-      );
+      const department: Department = await this.departmentRepo.findOne({
+        where: { id: data?.departmentId },
+      });
       initialData.department_Name =
         department?.name ?? initialData.department_Name;
       initialData.Department = department?.name ?? initialData.Department;
@@ -1060,7 +1064,7 @@ export class EmployeeController {
 
     existingEmployee.authUser.status = status as userEntity.UserStatus;
     const user = await this.userRepo.findOne({
-      id: existingEmployee.authUser.id,
+      where: { id: existingEmployee.authUser.id },
     });
     user.status = status as userEntity.UserStatus;
     await this.userRepo.save(user);

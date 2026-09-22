@@ -57,7 +57,7 @@ export class LocationController {
     )
     id: number,
   ): Promise<Location> {
-    const location = await this.locationRepo.findOne({ id });
+    const location = await this.locationRepo.findOne({ where: { id } });
     if (!location) {
       throw new HttpException(
         `Location does not exist against this id :${id}`,
@@ -130,7 +130,7 @@ export class LocationController {
     }
     const admin = await this.adminService.findByAuthUserId(req.user.id);
 
-    const existingLocation = await this.locationRepo.findOne({ id });
+    const existingLocation = await this.locationRepo.findOne({ where: { id } });
 
     if (!existingLocation) {
       throw new HttpException(
