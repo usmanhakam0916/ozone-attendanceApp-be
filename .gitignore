@@ -3,6 +3,7 @@
 /node_modules
 
 /public
+.env
 .env.sample
 
 # Logs
@@ -35,3 +36,9 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 config.bat
+
+# Claude Code
+# Worktrees are full working copies - never commit them.
+.claude/worktrees/
+# Per-developer permission overrides (settings.json stays shareable).
+.claude/settings.local.json
