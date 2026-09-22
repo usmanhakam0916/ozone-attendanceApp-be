@@ -30,7 +30,7 @@ dotenv.config();
   imports: [
     HttpModule,
     UserModule,
-    PassportModule,
+    PassportModule.register({}),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       // todo: fix the expiry period

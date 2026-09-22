@@ -23,7 +23,7 @@ export class FileService {
   async uploadFile(file, user, employeeId) {
     try {
       const employee = await this.employeeRepo.findOne({
-        where: employeeId ? { id: employeeId } : { authUser: user },
+        where: employeeId ? { id: employeeId } : { authUser: { id: user.id } },
       });
 
       if (!employee) {

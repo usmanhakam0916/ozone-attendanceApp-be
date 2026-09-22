@@ -68,7 +68,9 @@ export class EmployeeService {
       where: { username: batchNo.toString() },
     });
 
-    return this.employeeRepo.findOne({ where: { authUser } });
+    return this.employeeRepo.findOne({
+      where: { authUser: { id: authUser.id } },
+    });
   };
 
   findByAuthUserId = async (id) => {

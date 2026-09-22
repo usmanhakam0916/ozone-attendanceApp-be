@@ -27,7 +27,7 @@ export class AdminService {
       where: { id },
     });
 
-    return this.adminRepo.findOne({ where: { authUser } });
+    return this.adminRepo.findOne({ where: { authUser: { id: authUser.id } } });
   }
 
   create = async (data): Promise<Admin> => {

@@ -383,9 +383,11 @@ export class AttendanceService {
         process.env.IS_SYNC === 'true' &&
         req?.user?.isActiveDirectory
       ) {
-        const attendance: Attendance = await this.attendanceRepo.findOne({
-          where: { id: data?.attendanceId },
-        });
+        const attendance: Attendance = data?.attendanceId
+          ? await this.attendanceRepo.findOne({
+              where: { id: data.attendanceId },
+            })
+          : null;
         if (attendance) {
           const res = await this.http
             .patch(

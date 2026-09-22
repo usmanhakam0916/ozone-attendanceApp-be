@@ -585,9 +585,11 @@ export class EmployeeController {
         const locations = await this.locationService.findByIds(data.locations);
         newEmploye.locations = locations;
       }
-      const department: Department = await this.departmentRepo.findOne({
-        where: { id: data?.departmentId },
-      });
+      const department: Department = data?.departmentId
+        ? await this.departmentRepo.findOne({
+            where: { id: data.departmentId },
+          })
+        : null;
       initialData = {
         department_Name: department.name,
         Department: department.name,
@@ -952,9 +954,11 @@ export class EmployeeController {
       existingEmployee.locations = locations;
     }
     if (!data?.authUser?.password) {
-      const department: Department = await this.departmentRepo.findOne({
-        where: { id: data?.departmentId },
-      });
+      const department: Department = data?.departmentId
+        ? await this.departmentRepo.findOne({
+            where: { id: data.departmentId },
+          })
+        : null;
       initialData.department_Name =
         department?.name ?? initialData.department_Name;
       initialData.Department = department?.name ?? initialData.Department;
