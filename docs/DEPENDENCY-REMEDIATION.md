@@ -233,8 +233,15 @@ attendance, admins, device tracking, auth. Also asserts signup stores a
 - **Tested against an empty schema.** The API suite proves the code paths work;
   it does not prove real data migrates correctly. Run against a restored dump
   before trusting it.
-- `npm start` needs `NODE_PATH=./dist` or `tsconfig-paths/register` — the
-  `src/…` absolute imports don't resolve under plain Node. Pre-existing.
+- **Always build with `nest build`, never plain `tsc`.** The entities and
+  services import via `src/…` absolute paths, which only `tsconfig`'s `baseUrl`
+  resolves at compile time. The Nest CLI rewrites those to relative `require`s
+  on emit; a bare `tsc` build does not, and the result throws
+  `Cannot find module 'src/helpers/app.helpers'` at startup. If a stale `tsc`
+  build is left in `dist`, `nest start --watch` sees the incremental
+  `tsbuildinfo`, re-emits nothing and runs the broken output — clear `dist`
+  first. `npm start` and `npm run start:dev` both work correctly from a clean
+  `nest build`.
 
 ---
 
