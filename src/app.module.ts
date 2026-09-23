@@ -31,8 +31,6 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { VersionManagerModule } from './modules/versionManager/version_manager.module';
 
 // bugsnag implementation
-import { BugsnagModule } from '@nkaurelien/nest-bugsnag';
-import BugsnagPluginExpress from '@bugsnag/plugin-express';
 import { MulterModule } from '@nestjs/platform-express';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DeviceIdTrackingModule } from './modules/devicdIdTracking/deviceIdTracking.module';
@@ -42,10 +40,6 @@ import { DeviceIdTrackingModule } from './modules/devicdIdTracking/deviceIdTrack
     ScheduleModule.forRoot(),
     MulterModule.register({
       dest: '../public/uploads',
-    }),
-    BugsnagModule.forRoot({
-      apiKey: process.env.BUGSNAG_API_KEY,
-      plugins: [BugsnagPluginExpress],
     }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'public'),

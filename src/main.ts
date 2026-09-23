@@ -2,7 +2,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { urlencoded, json } from 'express';
-import { BugsnagService } from '@nkaurelien/nest-bugsnag';
+import Bugsnag from '@bugsnag/js';
+import BugsnagPluginExpress from '@bugsnag/plugin-express';
 // import {
 //   utilities as nestWinstonModuleUtilities,
 //   WinstonModule,
@@ -14,6 +15,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
+
+Bugsnag.start({
+  apiKey: process.env.BUGSNAG_API_KEY,
+  plugins: [BugsnagPluginExpress],
+});
 
 async function bootstrap() {
   // const nestLikeFormat = winston.format.printf(
@@ -82,7 +88,9 @@ async function bootstrap() {
   await app.listen(process.env.PORT);
   console.log(`Server is Running ${await app.getUrl()}`);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.get(BugsnagService).handleAnyErrors(app);
+  const bugsnagMiddleware = Bugsnag.getPlugin('express');
+  app.use(bugsnagMiddleware.requestHandler);
+  app.use(bugsnagMiddleware.errorHandler);
 }
 bootstrap();
 

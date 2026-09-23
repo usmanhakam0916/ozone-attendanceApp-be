@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { S3 } from 'aws-sdk';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { Repository } from 'typeorm';
 import { Employee } from '../employee/employee.entity';
 import { User } from '../user/user.entity';
@@ -22,7 +23,7 @@ export class FileService {
   async uploadFile(file, user, employeeId) {
     try {
       const employee = await this.employeeRepo.findOne({
-        where: employeeId ? { id: employeeId } : { authUser: user },
+        where: employeeId ? { id: employeeId } : { authUser: { id: user.id } },
       });
 
       if (!employee) {
@@ -63,44 +64,49 @@ export class FileService {
   }
 
   async deletePublicFile(id: number) {
-    const file: File = await this.fileRepo.findOne(id);
+    const file: File = await this.fileRepo.findOne({ where: { id } });
     // check if file existing
     // because some of the files are being delete from client side
     if (file && file.id && file.key) {
-      const s3 = new S3();
-      await s3
-        .deleteObject({
+      const s3 = new S3Client({});
+      await s3.send(
+        new DeleteObjectCommand({
           Bucket: process.env.AWS_PUBLIC_BUCKET_NAME,
           Key: file.key,
-        })
-        .promise();
+        }),
+      );
       return this.fileRepo.delete(file.id);
     }
   }
 
   async findById(id: number): Promise<File> {
-    return this.fileRepo.findOne(id);
+    return this.fileRepo.findOne({ where: { id } });
   }
 
   async uploadFileToS3(file, folderName) {
-    const s3 = new S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    const s3 = new S3Client({
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
       region: process.env.AWS_REIGION,
     });
-    const uploadResult = await s3
-      .upload({
+    // `Upload` is the v3 equivalent of v2's s3.upload(): it handles multipart
+    // and its result still carries Bucket/Key/Location, which callers read.
+    const uploadResult = await new Upload({
+      client: s3,
+      params: {
         Bucket: process.env.AWS_PUBLIC_BUCKET_NAME,
         Body: file?.buffer || file,
         Key: `${folderName}/${new Date().getTime()}-${file.originalname}`,
         ACL: 'public-read',
-      })
-      .promise();
+      },
+    }).done();
     return uploadResult;
   }
 
   async updateKey(key, id) {
-    const file = await this.fileRepo.findOne(id);
+    const file = await this.fileRepo.findOne({ where: { id } });
     file.key = key;
     this.fileRepo.save(file);
   }

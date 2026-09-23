@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   HttpException,
-  HttpService,
   HttpStatus,
   NotFoundException,
   Patch,
@@ -15,6 +14,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import {
   ApiBearerAuth,
   ApiOperation,

@@ -18,10 +18,10 @@ export class LocationService {
     return this.locationRepo.find();
   }
   async findById(id: number): Promise<Location> {
-    return this.locationRepo.findOne(id);
+    return this.locationRepo.findOne({ where: { id } });
   }
   async findByQRCode(qrCode: string): Promise<Location> {
-    return this.locationRepo.findOne({ qrCode });
+    return this.locationRepo.findOne({ where: { qrCode } });
   }
 
   async findByIds(ids: number[]): Promise<Location[]> {

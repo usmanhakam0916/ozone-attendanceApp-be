@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
-import { HttpModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
@@ -29,7 +30,7 @@ dotenv.config();
   imports: [
     HttpModule,
     UserModule,
-    PassportModule,
+    PassportModule.register({}),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       // todo: fix the expiry period

@@ -12,10 +12,10 @@ export class VersionManagerService {
   ) { }
 
   async findById(id: number): Promise<VersionManager> {
-    return this.versionManagerRepo.findOne(id);
+    return this.versionManagerRepo.findOne({ where: { id } });
   }
 
   async findActiveVersion(): Promise<VersionManager> {
-    return await this.versionManagerRepo.findOne({ isActive: true });
+    return await this.versionManagerRepo.findOne({ where: { isActive: true } });
   }
 }

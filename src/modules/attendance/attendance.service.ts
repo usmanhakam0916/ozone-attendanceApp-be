@@ -1,10 +1,10 @@
 import { Repository } from 'typeorm';
 import {
   HttpException,
-  HttpService,
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OZONE_BACKEND_BASE_URL } from 'src/app.constants';
 import { Attendance } from './attendance.entity';
@@ -64,7 +64,7 @@ export class AttendanceService {
   // }
 
   async findById(id: number): Promise<Attendance> {
-    return this.attendanceRepo.findOne(id);
+    return this.attendanceRepo.findOne({ where: { id } });
   }
 
   create = async (data: CreateAttendanceDto): Promise<Attendance> => {
@@ -383,9 +383,11 @@ export class AttendanceService {
         process.env.IS_SYNC === 'true' &&
         req?.user?.isActiveDirectory
       ) {
-        const attendance: Attendance = await this.attendanceRepo.findOne(
-          data?.attendanceId,
-        );
+        const attendance: Attendance = data?.attendanceId
+          ? await this.attendanceRepo.findOne({
+              where: { id: data.attendanceId },
+            })
+          : null;
         if (attendance) {
           const res = await this.http
             .patch(
