@@ -3,7 +3,10 @@
 /node_modules
 
 /public
+.env
+.env.*
 .env.sample
+
 
 # Logs
 logs
@@ -30,11 +33,7 @@ lerna-debug.log*
 *.sublime-workspace
 
 # IDE - VSCode
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-config.bat
+.vscode/*
 
 # Claude Code
 # Worktrees are full working copies - never commit them.
