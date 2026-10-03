@@ -76,7 +76,7 @@ export class AdminController {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    const admin = await this.adminRepo.findOne({ id });
+    const admin = await this.adminRepo.findOne({ where: { id } });
     if (!admin) {
       throw new HttpException(
         `Admin does not exist against this id :${id}`,
@@ -124,7 +124,10 @@ export class AdminController {
     }
     const { id } = req.params; // admin id
 
-    const admin = await this.adminRepo.findOne(id, { relations: ['authUser'] });
+    const admin = await this.adminRepo.findOne({
+      where: { id },
+      relations: { authUser: true },
+    });
     if (admin) {
       if (admin.authUser.id === req.user.id) {
         throw new BadRequestException("You can't delete yourself");
@@ -169,7 +172,7 @@ export class AdminController {
       );
     }
 
-    const existingAdmin = await this.adminRepo.findOne({ id });
+    const existingAdmin = await this.adminRepo.findOne({ where: { id } });
 
     if (!existingAdmin) {
       throw new HttpException(

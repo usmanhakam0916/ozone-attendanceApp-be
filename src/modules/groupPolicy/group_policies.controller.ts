@@ -13,7 +13,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { DeleteResult, getRepository, Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -43,7 +43,7 @@ export class GroupPoliciesController {
   @ApiResponse({ type: GroupPolicy, status: 200 })
   @Get()
   public async getAllGroupPolicies() {
-    let response = await getRepository(GroupPolicy)
+    let response = await this.groupPoliciesRepo
       .createQueryBuilder('groupPolicy')
       .leftJoin('groupPolicy.owner', 'owner')
       .leftJoin('groupPolicy.employees', 'employees')
@@ -86,8 +86,9 @@ export class GroupPoliciesController {
       policy.employees = employees;
     }
     const inserted = await this.groupPoliciesRepo.save(policy);
-    const new_policy = await this.groupPoliciesRepo.findOne(inserted.id, {
-      relations: ['employees'],
+    const new_policy = await this.groupPoliciesRepo.findOne({
+      where: { id: inserted.id },
+      relations: { employees: true },
     });
     return new_policy;
   }
@@ -103,10 +104,10 @@ export class GroupPoliciesController {
     )
     id: number,
   ) {
-    const policy = await this.groupPoliciesRepo.findOne(
-      { id: id },
-      { relations: ['employees', 'employees.authUser'] },
-    );
+    const policy = await this.groupPoliciesRepo.findOne({
+      where: { id: id },
+      relations: { employees: { authUser: true } },
+    });
     if (!policy) {
       throw new HttpException(
         `GroupPolicy does not exist against this id: ${id}`,
@@ -148,8 +149,9 @@ export class GroupPoliciesController {
       }
     }
     await this.groupPoliciesRepo.save(policy);
-    const new_policy = this.groupPoliciesRepo.findOne(id, {
-      relations: ['employees', 'employees.authUser'],
+    const new_policy = this.groupPoliciesRepo.findOne({
+      where: { id },
+      relations: { employees: { authUser: true } },
     });
     return new_policy;
   }

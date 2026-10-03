@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 
 // sgMail.setApiKey(process.env.SAND_GRID_API_KEY);
 
-const mailjet = require('node-mailjet').connect(
+const mailjet = require('node-mailjet').apiConnect(
   process.env.MAILJET_API,
   process.env.MAILJET_SECRET,
 );

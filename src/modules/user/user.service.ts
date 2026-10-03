@@ -24,11 +24,11 @@ export class UserService {
   ) { }
 
   async findOne(username: string): Promise<User | undefined> {
-    return await this.userRepo.findOne({ username });
+    return await this.userRepo.findOne({ where: { username } });
   }
 
   async getById(id: number): Promise<User> {
-    return this.userRepo.findOne({ id });
+    return this.userRepo.findOne({ where: { id } });
   }
 
   async save(data: User): Promise<User> {

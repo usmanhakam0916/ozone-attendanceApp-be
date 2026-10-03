@@ -19,15 +19,15 @@ export class AdminService {
   ) { }
 
   async findById(id: number): Promise<Admin> {
-    return this.adminRepo.findOne(id);
+    return this.adminRepo.findOne({ where: { id } });
   }
 
   async findByAuthUserId(id: number): Promise<Admin> {
     const authUser = await this.userRepo.findOne({
-      id,
+      where: { id },
     });
 
-    return this.adminRepo.findOne({ authUser });
+    return this.adminRepo.findOne({ where: { authUser: { id: authUser.id } } });
   }
 
   create = async (data): Promise<Admin> => {
